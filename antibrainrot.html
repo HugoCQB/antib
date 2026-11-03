@@ -25,7 +25,7 @@
       text-align: center;
       padding: 10px 14px;
     }
-    .card, .backup-actions, #actionBtn, #buySection, #bonusInfo {
+    .card, .backup-actions, #actionBtn, #buySection, #bonusInfo, #rewardChoiceSection {
       width: 100%;
       max-width: 360px;
     }
@@ -184,25 +184,40 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    .inputs-wrapper { display: flex; align-items: center; gap: 4px; }
-    .unit-tag { font-size: 0.72rem; margin-right: 3px; font-weight: 600; }
+    .inputs-wrapper { 
+      display: flex; 
+      align-items: center; 
+      gap: 3px; 
+    }
+    .unit-tag { 
+      font-size: 0.68rem; 
+      margin-right: 2px; 
+      font-weight: 600; 
+      color: #aaa;
+    }
 
     input[type="number"], select {
       background: #000;
       border: 1px solid #fff;
       color: #fff;
       border-radius: 6px;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       outline: none;
     }
     input[type="number"] {
-      padding: 4px 2px;
-      width: 48px;
+      padding: 3px 1px;
+      width: 36px;
       text-align: center;
       font-weight: bold;
+      -moz-appearance: textfield;
+    }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
     }
     select { padding: 4px 6px; max-width: 185px; font-weight: 600; }
-    input:disabled, select:disabled { border-color: #fff; -webkit-text-fill-color: #fff; }
+    input:disabled, select:disabled { border-color: #555; color: #555; -webkit-text-fill-color: #555; }
 
     .checkbox-label {
       display: flex;
@@ -214,7 +229,7 @@
     }
     .checkbox-label input { width: 15px; height: 15px; accent-color: #fff; cursor: pointer; }
 
-    /* Bouton principal */
+    /* Bouton principal & Choix de récompense */
     #actionBtn {
       background: #fff;
       color: #000;
@@ -235,6 +250,34 @@
     #actionBtn.stop { background: #000; color: #fff; }
     #actionBtn.stop:active { background: #fff; color: #000; }
     #actionBtn.presence { background: #000; color: #fff; font-size: 1.4rem; }
+
+    #rewardChoiceSection {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .btn-reward {
+      background: #000;
+      border: 1px solid #fff;
+      color: #fff;
+      padding: 10px 8px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      text-transform: uppercase;
+      line-height: 1.3;
+      transition: background 0.2s, color 0.2s;
+    }
+    .btn-reward:hover {
+      background: #fff;
+      color: #000;
+    }
+    .btn-reward:active {
+      transform: scale(0.98);
+    }
 
     #stopwatch {
       font-family: "SF Mono", Monaco, Consolas, monospace;
@@ -280,7 +323,9 @@
     <div class="config-row" id="rowMin">
       <span class="row-label">Min</span>
       <div class="inputs-wrapper">
-        <input type="number" id="minM" value="0" min="0" max="999">
+        <input type="number" id="minH" value="0" min="0" max="99">
+        <span class="unit-tag">h</span>
+        <input type="number" id="minM" value="0" min="0" max="59">
         <span class="unit-tag">m</span>
         <input type="number" id="minS" value="5" min="0" max="59">
         <span class="unit-tag">s</span>
@@ -289,7 +334,9 @@
     <div class="config-row">
       <span class="row-label">Max</span>
       <div class="inputs-wrapper">
-        <input type="number" id="maxM" value="3" min="0" max="999">
+        <input type="number" id="maxH" value="0" min="0" max="99">
+        <span class="unit-tag">h</span>
+        <input type="number" id="maxM" value="3" min="0" max="59">
         <span class="unit-tag">m</span>
         <input type="number" id="maxS" value="3" min="0" max="59">
         <span class="unit-tag">s</span>
@@ -322,6 +369,11 @@
     </div>
   </div>
 
+  <div id="rewardChoiceSection">
+    <button class="btn-reward" id="btnChooseStreak">VALIDER LA SÉRIE</button>
+    <button class="btn-reward" id="btnChooseBank">SOLDE EN BANQUE (TAUX ÷ 2)</button>
+  </div>
+
   <button id="actionBtn">COMMENCER</button>
   <div id="stopwatch">00:00</div>
 
@@ -329,16 +381,23 @@
     const $ = id => document.getElementById(id);
 
     const DURATION_TIERS = [
-      { id: "1m", label: "≥ 1m", minSec: 60, rate: 0.25 },
-      { id: "5m", label: "≥ 5m", minSec: 300, rate: 0.30 },
-      { id: "10m", label: "≥ 10m", minSec: 600, rate: 0.35 },
-      { id: "15m", label: "≥ 15m", minSec: 900, rate: 0.40 },
-      { id: "30m", label: "≥ 30m", minSec: 1800, rate: 0.45 },
-      { id: "45m", label: "≥ 45m", minSec: 2700, rate: 0.50 },
-      { id: "60m", label: "≥ 60m", minSec: 3600, rate: 0.55 },
-      { id: "90m", label: "≥ 90m", minSec: 5400, rate: 0.60 },
-      { id: "120m", label: "≥ 120m", minSec: 7200, rate: 0.65 },
-      { id: "180m", label: "≥ 180m", minSec: 10800, rate: 0.75 }
+      { id: "1m", label: "≥ 1m", minSec: 60, rate: 0.10 },
+      { id: "5m", label: "≥ 5m", minSec: 300, rate: 0.15 },
+      { id: "10m", label: "≥ 10m", minSec: 600, rate: 0.20 },
+      { id: "15m", label: "≥ 15m", minSec: 900, rate: 0.25 },
+      { id: "30m", label: "≥ 30m", minSec: 1800, rate: 0.30 },
+      { id: "45m", label: "≥ 45m", minSec: 2700, rate: 0.35 },
+      { id: "1h", label: "≥ 1h", minSec: 3600, rate: 0.40 },
+      { id: "1h30", label: "≥ 1h30", minSec: 5400, rate: 0.45 },
+      { id: "2h", label: "≥ 2h", minSec: 7200, rate: 0.50 },
+      { id: "2h30", label: "≥ 2h30", minSec: 9000, rate: 0.55 },
+      { id: "3h", label: "≥ 3h", minSec: 10800, rate: 0.60 },
+      { id: "3h30", label: "≥ 3h30", minSec: 12600, rate: 0.65 },
+      { id: "4h", label: "≥ 4h", minSec: 14400, rate: 0.70 },
+      { id: "4h30", label: "≥ 4h30", minSec: 16200, rate: 0.75 },
+      { id: "5h", label: "≥ 5h", minSec: 18000, rate: 0.80 },
+      { id: "5h30", label: "≥ 5h30", minSec: 19800, rate: 0.85 },
+      { id: "6h", label: "≥ 6h", minSec: 21600, rate: 0.90 }
     ];
 
     let selectedTierId = null, running = false, presenceMode = null;
@@ -346,6 +405,7 @@
     let pauseOffsetMs = 0, pauseStartMs = 0, startTime = 0;
     let masterInterval = null, presenceTimer = null;
     let surpriseProbPerSec = 0, lastSurpriseEndSecond = -999;
+    let pendingVictory = null;
 
     const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE"); };
     document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
@@ -354,7 +414,10 @@
 
     const recupererDateJour = () => new Date().toISOString().slice(0, 10);
     const calculerEcartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
-    const lireSecondesConfig = (mId, sId) => (parseInt($(mId).value, 10) || 0) * 60 + (parseInt($(sId).value, 10) || 0);
+    const lireSecondesConfig = (hId, mId, sId) => 
+      (parseInt($(hId).value, 10) || 0) * 3600 +
+      (parseInt($(mId).value, 10) || 0) * 60 +
+      (parseInt($(sId).value, 10) || 0);
 
     function chargerDonneesStats() {
       const defaut = { lastActiveDate: null, dayStreak: 0, dayStreakRecord: 0, bankSeconds: 0, tiers: {} };
@@ -385,19 +448,20 @@
     };
 
     function actualiserBoutonRecommencer() {
-      if (running) return;
-      reinitialiserBouton(`COMMENCER\n${formaterTemps(lireSecondesConfig('maxM', 'maxS'))}`);
+      if (running || pendingVictory) return;
+      reinitialiserBouton(`COMMENCER\n${formaterTemps(lireSecondesConfig('maxH', 'maxM', 'maxS'))}`);
     }
 
     function selectionnerPalier(id) {
-      if (running) return;
+      if (running || pendingVictory) return;
       if (selectedTierId === id) {
         selectedTierId = null;
       } else {
         selectedTierId = id;
         const t = DURATION_TIERS.find(tier => tier.id === id);
         if (t) {
-          $('maxM').value = Math.floor(t.minSec / 60);
+          $('maxH').value = Math.floor(t.minSec / 3600);
+          $('maxM').value = Math.floor((t.minSec % 3600) / 60);
           $('maxS').value = t.minSec % 60;
           sauvegarderParametres();
         }
@@ -407,7 +471,7 @@
     }
 
     function actualiserPalierSelonMax() {
-      const maxSec = lireSecondesConfig('maxM', 'maxS');
+      const maxSec = lireSecondesConfig('maxH', 'maxM', 'maxS');
       const match = [...DURATION_TIERS].reverse().find(t => maxSec >= t.minSec);
       selectedTierId = match ? match.id : null;
 
@@ -449,12 +513,12 @@
       const tierObj = selectedTierId ? DURATION_TIERS.find(t => t.id === selectedTierId) : null;
       const isSelectedDoneToday = tierObj && data.tiers[selectedTierId]?.lastDate === today;
 
-      bonusInfo.style.display = (tierObj && !running && isSelectedDoneToday) ? 'flex' : 'none';
+      bonusInfo.style.display = (tierObj && !running && !pendingVictory && isSelectedDoneToday) ? 'flex' : 'none';
       if (bonusInfo.style.display === 'flex') {
         bonusInfo.textContent = `Palier ${tierObj.label} déjà validé`;
       }
 
-      if (tierObj && !running && !isSelectedDoneToday) {
+      if (tierObj && !running && !pendingVictory && !isSelectedDoneToday) {
         const costSec = Math.round(tierObj.minSec * 1.5);
         buySec.style.display = 'block';
         $('btnBuyStreak').textContent = `Acheter streak ${tierObj.label} (${formaterTempsCourt(costSec)})`;
@@ -465,7 +529,7 @@
     }
 
     function acheterStreak() {
-      if (!selectedTierId || running) return;
+      if (!selectedTierId || running || pendingVictory) return;
       const data = chargerDonneesStats();
       const today = recupererDateJour();
       const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
@@ -496,7 +560,7 @@
 
     function exporterSauvegarde() {
       const exportData = {
-        version: 5,
+        version: 7,
         dateExport: new Date().toISOString(),
         config: localStorage.getItem('meditation_presence_config'),
         stats: localStorage.getItem('meditation_presence_stats')
@@ -533,47 +597,55 @@
       event.target.value = "";
     }
 
-    function comptabiliserSession(estVictoire, maxSecSession, dureeReelle) {
+    function traiterRecompenseSession(choix) {
+      if (!pendingVictory) return;
+      const { maxSecSession, dureeReelle, targetTier } = pendingVictory;
       const stats = chargerDonneesStats();
       const today = recupererDateJour();
-      let estComptabilise = false;
       let gainBanque = 0;
+      let texteResultat = "";
 
-      if (estVictoire) {
+      if (choix === 'streak') {
         if (stats.lastActiveDate !== today) {
           stats.dayStreak = (calculerEcartJours(stats.lastActiveDate, today) === 1) ? stats.dayStreak + 1 : 1;
           stats.lastActiveDate = today;
         }
         stats.dayStreakRecord = Math.max(stats.dayStreak, stats.dayStreakRecord || 0);
 
-        const targetTier = selectedTierId ? DURATION_TIERS.find(t => t.id === selectedTierId) : DURATION_TIERS[0];
-        if (targetTier && maxSecSession >= targetTier.minSec) {
+        if (targetTier) {
           const tier = stats.tiers[targetTier.id] = stats.tiers[targetTier.id] || { streak: 0, record: 0, lastDate: null };
-          if (tier.lastDate !== today) {
-            tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
-            tier.lastDate = today;
-            tier.record = Math.max(tier.streak, tier.record || 0);
-            estComptabilise = true;
-          }
+          tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
+          tier.lastDate = today;
+          tier.record = Math.max(tier.streak, tier.record || 0);
         }
-
-        if (!estComptabilise) {
-          const tauxApplique = targetTier ? targetTier.rate : 0.25;
-          gainBanque = Math.floor(dureeReelle * tauxApplique);
-          stats.bankSeconds = (stats.bankSeconds || 0) + gainBanque;
-        }
+        texteResultat = "STREAK COMPTABILISÉ";
+      } else if (choix === 'bank_half') {
+        const rateHalf = targetTier ? (targetTier.rate / 2) : 0.125;
+        gainBanque = Math.floor(dureeReelle * rateHalf);
+        stats.bankSeconds = (stats.bankSeconds || 0) + gainBanque;
+        texteResultat = `+${formaterTemps(gainBanque)} (TAUX ÷2)`;
+      } else if (choix === 'bank_full') {
+        const fullRate = targetTier ? targetTier.rate : 0.25;
+        gainBanque = Math.floor(dureeReelle * fullRate);
+        stats.bankSeconds = (stats.bankSeconds || 0) + gainBanque;
+        texteResultat = `+${formaterTemps(gainBanque)} SOLDÉ`;
       }
 
       enregistrerDonneesStats(stats);
       rafraichirAffichageStats();
-      return { estComptabilise, gainBanque };
+
+      const tempsTenu = formaterTemps(dureeReelle);
+      pendingVictory = null;
+      $('rewardChoiceSection').style.display = 'none';
+      $('actionBtn').style.display = 'block';
+      reinitialiserBouton(`GAGNÉ (${tempsTenu})\n${texteResultat}\nRECOMMENCER`);
     }
 
     function sauvegarderParametres() {
       try {
         localStorage.setItem('meditation_presence_config', JSON.stringify({
-          minM: $('minM').value, minS: $('minS').value,
-          maxM: $('maxM').value, maxS: $('maxS').value,
+          minH: $('minH').value, minM: $('minM').value, minS: $('minS').value,
+          maxH: $('maxH').value, maxM: $('maxM').value, maxS: $('maxS').value,
           surpriseFreq: $('surpriseFreq').value,
           probDist: $('probDist').value,
           showStopwatch: $('showStopwatch').checked
@@ -584,7 +656,7 @@
     function chargerParametres() {
       try {
         const config = JSON.parse(localStorage.getItem('meditation_presence_config') || '{}');
-        ['minM', 'minS', 'maxM', 'maxS', 'surpriseFreq', 'probDist'].forEach(k => {
+        ['minH', 'minM', 'minS', 'maxH', 'maxM', 'maxS', 'surpriseFreq', 'probDist'].forEach(k => {
           if (config[k] !== undefined && $(k)) $(k).value = config[k];
         });
         if (config.showStopwatch !== undefined) $('showStopwatch').checked = config.showStopwatch;
@@ -593,7 +665,7 @@
 
     function gererChangementDistribution() {
       const isFixed = $('probDist').value === 'fixed';
-      $('minM').disabled = $('minS').disabled = isFixed;
+      $('minH').disabled = $('minM').disabled = $('minS').disabled = isFixed;
       $('rowMin').style.display = isFixed ? "none" : "flex";
       $('surpriseFreq').disabled = !isFixed;
       $('rowSurprise').style.display = isFixed ? "flex" : "none";
@@ -604,17 +676,35 @@
     }
 
     function formaterTemps(totalSec) {
-      const m = Math.floor(totalSec / 60), s = totalSec % 60;
-      return (m > 0 && s > 0) ? `${m}m ${s}s` : (m > 0 ? `${m}m` : `${s}s`);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      const parts = [];
+      if (h > 0) parts.push(`${h}h`);
+      if (m > 0) parts.push(`${m}m`);
+      if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+      return parts.join(' ');
     }
 
     function formaterTempsCourt(totalSec) {
-      const m = Math.floor(totalSec / 60), s = totalSec % 60;
-      return (m > 0 && s > 0) ? `${m}m${s}s` : (m > 0 ? `${m}m` : `${s}s`);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      const parts = [];
+      if (h > 0) parts.push(`${h}h`);
+      if (m > 0) parts.push(`${m}m`);
+      if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+      return parts.join('');
     }
 
     function formaterChrono(sec) {
-      return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      if (h > 0) {
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
     function calculerTempsCible(minSec, maxSec, mode) {
@@ -625,9 +715,9 @@
     }
 
     function toggleFormInputs(disabled) {
-      ['maxM', 'maxS', 'showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
+      ['maxH', 'maxM', 'maxS', 'showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
       if (disabled) {
-        $('minM').disabled = $('minS').disabled = $('surpriseFreq').disabled = true;
+        $('minH').disabled = $('minM').disabled = $('minS').disabled = $('surpriseFreq').disabled = true;
         $('buySection').style.display = $('bonusInfo').style.display = 'none';
       } else {
         gererChangementDistribution();
@@ -649,10 +739,38 @@
         clearTimeout(presenceTimer);
         presenceMode = null;
 
-        const res = comptabiliserSession(true, configuredMaxSeconds, targetSeconds);
-        const tempsTenu = formaterTemps(targetSeconds);
-        const detail = res.estComptabilise ? "COMPTABILISÉ" : `${res.gainBanque > 0 ? formaterTemps(res.gainBanque) : "0s"} SOLDÉ`;
-        reinitialiserBouton(`GAGNÉ (${tempsTenu})\n${detail}\nRECOMMENCER`);
+        const stats = chargerDonneesStats();
+        const today = recupererDateJour();
+        const targetTier = selectedTierId ? DURATION_TIERS.find(t => t.id === selectedTierId) : DURATION_TIERS[0];
+        const canValidateTier = targetTier && configuredMaxSeconds >= targetTier.minSec;
+        const alreadyDoneToday = canValidateTier && stats.tiers[targetTier.id]?.lastDate === today;
+
+        if (canValidateTier && !alreadyDoneToday) {
+          // Offrir le choix : Streak OU Solde (taux divisé par 2)
+          pendingVictory = {
+            maxSecSession: configuredMaxSeconds,
+            dureeReelle: targetSeconds,
+            targetTier: targetTier
+          };
+
+          const rateHalf = (targetTier.rate / 2);
+          const gainPotentiel = Math.floor(targetSeconds * rateHalf);
+
+          $('btnChooseStreak').textContent = `VALIDER SÉRIE ${targetTier.label}`;
+          $('btnChooseBank').textContent = `SOLDE TEMPS : +${formaterTemps(gainPotentiel)} (×${rateHalf.toFixed(3).replace(/\.?0+$/, '')})`;
+
+          $('actionBtn').style.display = 'none';
+          $('rewardChoiceSection').style.display = 'flex';
+          toggleFormInputs(true);
+        } else {
+          // Si palier déjà validé aujourd'hui ou pas de palier cible : encaissement direct au taux plein
+          pendingVictory = {
+            maxSecSession: configuredMaxSeconds,
+            dureeReelle: targetSeconds,
+            targetTier: targetTier
+          };
+          traiterRecompenseSession('bank_full');
+        }
       } else if (running) {
         declarerEchec("ABANDON");
       } else {
@@ -663,8 +781,8 @@
     function demarrerSession() {
       sauvegarderParametres();
 
-      const minTotal = lireSecondesConfig('minM', 'minS');
-      const maxTotal = lireSecondesConfig('maxM', 'maxS');
+      const minTotal = lireSecondesConfig('minH', 'minM', 'minS');
+      const maxTotal = lireSecondesConfig('maxH', 'maxM', 'maxS');
       const distMode = $('probDist').value;
 
       if (maxTotal <= 0) return alert("La durée maximum doit être supérieure à 0.");
@@ -679,7 +797,11 @@
       startTime = Date.now();
       lastSurpriseEndSecond = -999;
       presenceMode = null;
+      pendingVictory = null;
       running = true;
+
+      $('rewardChoiceSection').style.display = 'none';
+      $('actionBtn').style.display = 'block';
 
       toggleFormInputs(true);
       toggleChronoDisplay();
@@ -687,7 +809,7 @@
       const btn = $('actionBtn');
       btn.textContent = "ABANDONNER";
       btn.className = "stop";
-      $('stopwatch').textContent = "00:00";
+      $('stopwatch').textContent = formaterChrono(0);
 
       clearInterval(masterInterval);
       masterInterval = setInterval(moteurTemps, 200);
@@ -734,12 +856,15 @@
     function declarerEchec(raison = "NON VALIDÉ") {
       presenceMode = null;
       running = false;
+      pendingVictory = null;
       clearInterval(masterInterval);
       clearTimeout(presenceTimer);
 
+      $('rewardChoiceSection').style.display = 'none';
+      $('actionBtn').style.display = 'block';
+
       const tempsTenu = formaterTemps(elapsedSeconds);
-      comptabiliserSession(false, configuredMaxSeconds, 0);
-      reinitialiserBouton(`PERDU : ${raison} (${tempsTenu})\nRECOMMENCER`);
+      reinitialiserBouton(`PERDU (${tempsTenu})\n${raison}\nRECOMMENCER`);
     }
 
     function reinitialiserBouton(label = "COMMENCER") {
@@ -756,8 +881,11 @@
     $('actionBtn').addEventListener('click', handleClick);
     $('btnBuyStreak').addEventListener('click', acheterStreak);
 
-    ['minM', 'minS'].forEach(id => $(id).addEventListener('input', sauvegarderParametres));
-    ['maxM', 'maxS'].forEach(id => $(id).addEventListener('input', actualiserPalierSelonMax));
+    $('btnChooseStreak').addEventListener('click', () => traiterRecompenseSession('streak'));
+    $('btnChooseBank').addEventListener('click', () => traiterRecompenseSession('bank_half'));
+
+    ['minH', 'minM', 'minS'].forEach(id => $(id).addEventListener('input', sauvegarderParametres));
+    ['maxH', 'maxM', 'maxS'].forEach(id => $(id).addEventListener('input', actualiserPalierSelonMax));
 
     $('surpriseFreq').addEventListener('change', sauvegarderParametres);
     $('probDist').addEventListener('change', () => {
