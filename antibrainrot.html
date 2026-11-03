@@ -185,7 +185,6 @@
       background: #fff;
       color: #000;
     }
-    /* Affichage discret sans pulsation ni halo pour le contrôle surprise et la fin */
     button#actionBtn.presence {
       background: #000;
       color: #fff;
@@ -519,8 +518,8 @@
     function handleClick() {
       if (presenceMode === 'mid') {
         clearTimeout(presenceTimer);
-        pauseOffsetMs += (Date.now() - pauseStartMs);
         presenceMode = null;
+        pauseOffsetMs += (Date.now() - pauseStartMs);
         lastSurpriseEndSecond = elapsedSeconds;
 
         const btn = $('actionBtn');
@@ -576,31 +575,29 @@
       const currentSec = Math.floor((Date.now() - startTime - pauseOffsetMs) / 1000);
       if (currentSec <= elapsedSeconds) return;
 
-      while (elapsedSeconds < currentSec) {
-        elapsedSeconds++;
-        $('stopwatch').textContent = formaterChrono(elapsedSeconds);
+      elapsedSeconds = currentSec;
+      $('stopwatch').textContent = formaterChrono(elapsedSeconds);
 
-        if (elapsedSeconds >= targetSeconds) {
-          clearInterval(masterInterval);
-          running = false;
-          activerCompteARebours('final', 10, "TERMINER", "NON VALIDÉ");
-          return;
-        }
+      if (elapsedSeconds >= targetSeconds) {
+        clearInterval(masterInterval);
+        running = false;
+        activerCompteARebours('final', 10, "TERMINER", "NON VALIDÉ");
+        return;
+      }
 
-        if (surpriseProbPerSec > 0) {
-          const delaiEcoule = (elapsedSeconds - lastSurpriseEndSecond) >= 10;
-          const pasTropProcheFin = (targetSeconds - elapsedSeconds) > 20;
+      if (surpriseProbPerSec > 0) {
+        const delaiEcoule = (elapsedSeconds - lastSurpriseEndSecond) >= 10;
+        const pasTropProcheFin = (targetSeconds - elapsedSeconds) > 20;
 
-          if (delaiEcoule && pasTropProcheFin && Math.random() < surpriseProbPerSec) {
-            pauseStartMs = Date.now();
-            activerCompteARebours('mid', 10, "PRÉSENT", "CONTRÔLE MANQUÉ");
-            return;
-          }
+        if (delaiEcoule && pasTropProcheFin && Math.random() < surpriseProbPerSec) {
+          pauseStartMs = Date.now();
+          activerCompteARebours('mid', 10, "PRÉSENT", "CONTRÔLE MANQUÉ");
         }
       }
     }
 
     function activerCompteARebours(mode, seconds, labelPrefix, failReason) {
+      clearTimeout(presenceTimer);
       presenceMode = mode;
       countdownVal = seconds;
 
