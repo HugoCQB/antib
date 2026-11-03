@@ -154,21 +154,21 @@
 
     #bonusInfo {
       display: none;
+      width: 100%;
       background: #000;
-      border: 1px solid #444;
-      border-radius: 8px;
-      padding: 6px 10px;
-      margin-bottom: 6px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: #bbb;
-      line-height: 1.4;
-    }
-    #bonusInfo .highlight {
       color: #fff;
-      font-family: "SF Mono", Monaco, Consolas, monospace;
+      border: 1px dashed #fff;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.75rem;
       font-weight: 700;
-    }
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      line-height: normal;
+      box-sizing: border-box;
+      cursor: default;
+    } 
 
     #buySection {
       margin-bottom: 6px;
@@ -513,7 +513,7 @@
         const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
         const secParMin = Math.round(60 * tierObj.rate);
         bonusInfo.style.display = 'block';
-        bonusInfo.innerHTML = `Palier <span class="highlight">${tierObj.label}</span> déjà validé : bonus réserve actif à <span class="highlight">×${tierObj.rate}</span> (1m tenue = ${secParMin}s épargnées)`;
+        bonusInfo.textContent = `Palier ${tierObj.label} déjà validé`;
       } else {
         bonusInfo.style.display = 'none';
       }
