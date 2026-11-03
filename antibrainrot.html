@@ -46,7 +46,7 @@
       cursor: pointer;
       font-weight: 600;
       text-transform: uppercase;
-      transition: all 0.2s;
+      transition: background 0.2s, color 0.2s;
       appearance: none;
     }
     .btn-secondary:hover {
@@ -97,7 +97,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      transition: all 0.25s ease;
+      transition: opacity 0.2s, border-color 0.2s;
     }
     .tier-box.locked {
       border-color: #333;
@@ -172,18 +172,24 @@
       line-height: 1.3;
       white-space: pre-line;
       margin-bottom: 6px;
-      transition: all 0.2s ease;
+      transition: transform 0.1s ease;
       touch-action: manipulation;
       appearance: none;
     }
     button#actionBtn:active { transform: scale(0.98); }
-    button#actionBtn.stop, button#actionBtn.presence {
+    button#actionBtn.stop {
       background: #000;
       color: #fff;
     }
-    button#actionBtn.stop:active, button#actionBtn.presence:active {
+    button#actionBtn.stop:active {
       background: #fff;
       color: #000;
+    }
+    /* Affichage discret sans pulsation ni halo pour le contrôle surprise et la fin */
+    button#actionBtn.presence {
+      background: #000;
+      color: #fff;
+      border: 1px solid #fff;
     }
 
     #stopwatch {
@@ -199,9 +205,9 @@
 <body>
 
   <div class="backup-actions">
-    <button class="btn-secondary" onclick="exporterSauvegarde()">Exporter</button>
-    <button class="btn-secondary" onclick="$('importFile').click()">Importer</button>
-    <input type="file" id="importFile" accept=".json" onchange="importerSauvegarde(event)">
+    <button class="btn-secondary" id="btnExport">Exporter</button>
+    <button class="btn-secondary" id="btnImport">Importer</button>
+    <input type="file" id="importFile" accept=".json">
   </div>
 
   <div class="unified-stats-card card">
@@ -217,24 +223,34 @@
     <div class="config-row" id="rowMin">
       <span class="row-label">Min</span>
       <div class="inputs-wrapper">
-        <input type="number" id="minM" value="0" min="0" max="999" onchange="sauvegarderParametres()">
+        <input type="number" id="minM" value="0" min="0" max="999">
         <span class="unit-tag">m</span>
-        <input type="number" id="minS" value="5" min="0" max="59" onchange="sauvegarderParametres()">
+        <input type="number" id="minS" value="5" min="0" max="59">
         <span class="unit-tag">s</span>
       </div>
     </div>
     <div class="config-row">
       <span class="row-label">Max</span>
       <div class="inputs-wrapper">
-        <input type="number" id="maxM" value="3" min="0" max="999" onchange="sauvegarderParametres()">
+        <input type="number" id="maxM" value="3" min="0" max="999">
         <span class="unit-tag">m</span>
-        <input type="number" id="maxS" value="3" min="0" max="59" onchange="sauvegarderParametres()">
+        <input type="number" id="maxS" value="3" min="0" max="59">
         <span class="unit-tag">s</span>
       </div>
     </div>
     <div class="config-row">
+      <span class="row-label">Contrôles</span>
+      <select id="surpriseFreq">
+        <option value="0">Aucun (0 %)</option>
+        <option value="0.0055">Rare (~1 / 3 min)</option>
+        <option value="0.011" selected>Modéré (~1 / 90 s)</option>
+        <option value="0.020">Fréquent (~1 / 50 s)</option>
+        <option value="0.0333">Intense (~1 / 30 s)</option>
+      </select>
+    </div>
+    <div class="config-row">
       <span class="row-label">Tirage</span>
-      <select id="probDist" onchange="gererChangementDistribution(); sauvegarderParametres();">
+      <select id="probDist">
         <option value="fixed">Durée fixe (Max)</option>
         <option value="linear" selected>Linéaire (vers max)</option>
         <option value="exponential">Exponentiel (fort)</option>
@@ -245,17 +261,18 @@
     <div class="config-row">
       <span class="row-label">Chrono</span>
       <label class="checkbox-label">
-        <input type="checkbox" id="showStopwatch" checked onchange="toggleChronoDisplay(); sauvegarderParametres();">
+        <input type="checkbox" id="showStopwatch" checked>
         <span>Afficher le temps</span>
       </label>
     </div>
   </div>
 
-  <button id="actionBtn" onclick="handleClick()">COMMENCER</button>
+  <button id="actionBtn">COMMENCER</button>
   <div id="stopwatch">00:00</div>
 
   <script>
     const $ = id => document.getElementById(id);
+
     const DURATION_TIERS = [
       { id: "1m", label: "≥ 1m", minSec: 60 },
       { id: "5m", label: "≥ 5m", minSec: 300 },
@@ -270,22 +287,26 @@
     ];
 
     let running = false;
-    let presenceMode = null;
-    let countdownVal = 10;
+    let presenceMode = null; // 'mid' | 'final' | null
+    let countdownVal = 0;
     let targetSeconds = 0;
     let configuredMaxSeconds = 0;
     let elapsedSeconds = 0;
+    let pauseOffsetMs = 0;
+    let pauseStartMs = 0;
+    let startTime = 0;
     let masterInterval = null;
     let presenceTimer = null;
+
+    let surpriseProbPerSec = 0;
+    let lastSurpriseEndSecond = -999;
 
     const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE"); };
     document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
     window.addEventListener("pagehide", stopIfRunning);
     window.addEventListener("blur", stopIfRunning);
 
-    function recupererDateJour() {
-      return new Date().toISOString().slice(0, 10);
-    }
+    const recupererDateJour = () => new Date().toISOString().slice(0, 10);
 
     function calculerEcartJours(d1, d2) {
       if (!d1 || !d2) return 999;
@@ -324,11 +345,10 @@
       const data = chargerDonneesStats();
       const today = recupererDateJour();
 
-      $('statDayStreak').innerText = `${data.dayStreak} j`;
-      $('statDayStreakRecord').innerText = `Record : ${data.dayStreakRecord || 0} j`;
+      $('statDayStreak').textContent = `${data.dayStreak} j`;
+      $('statDayStreakRecord').textContent = `Record : ${data.dayStreakRecord || 0} j`;
 
-      const container = $('tiersContainer');
-      container.innerHTML = "";
+      const fragment = document.createDocumentFragment();
       let foundNextTarget = false;
 
       DURATION_TIERS.forEach((t, i) => {
@@ -351,18 +371,21 @@
           <span class="tier-val">${tData.streak}j</span>
           <span class="tier-rec">r:${tData.record}</span>
         `;
-        container.appendChild(box);
+        fragment.appendChild(box);
       });
+
+      const container = $('tiersContainer');
+      container.replaceChildren(fragment);
     }
 
     function exporterSauvegarde() {
-      const blob = new Blob([JSON.stringify({
+      const exportData = {
         version: 3,
         dateExport: new Date().toISOString(),
         config: localStorage.getItem('meditation_presence_config'),
         stats: localStorage.getItem('meditation_presence_stats')
-      }, null, 2)], { type: "application/json" });
-
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = `presence-backup-${recupererDateJour()}.json`;
@@ -378,15 +401,21 @@
       reader.onload = e => {
         try {
           const data = JSON.parse(e.target.result);
-          if (data.stats) localStorage.setItem('meditation_presence_stats', data.stats);
-          if (data.config) localStorage.setItem('meditation_presence_config', data.config);
+          if (data.stats) {
+            JSON.parse(data.stats);
+            localStorage.setItem('meditation_presence_stats', data.stats);
+          }
+          if (data.config) {
+            JSON.parse(data.config);
+            localStorage.setItem('meditation_presence_config', data.config);
+          }
           chargerParametres();
           gererChangementDistribution();
           toggleChronoDisplay();
           rafraichirAffichageStats();
           alert("Données importées avec succès.");
         } catch {
-          alert("Erreur lors de l'import : fichier invalide.");
+          alert("Erreur lors de l'import : fichier corrompu ou invalide.");
         }
       };
       reader.readAsText(file);
@@ -429,6 +458,7 @@
         localStorage.setItem('meditation_presence_config', JSON.stringify({
           minM: $('minM').value, minS: $('minS').value,
           maxM: $('maxM').value, maxS: $('maxS').value,
+          surpriseFreq: $('surpriseFreq').value,
           probDist: $('probDist').value,
           showStopwatch: $('showStopwatch').checked
         }));
@@ -438,8 +468,8 @@
     function chargerParametres() {
       try {
         const config = JSON.parse(localStorage.getItem('meditation_presence_config') || '{}');
-        ['minM', 'minS', 'maxM', 'maxS', 'probDist'].forEach(k => {
-          if (config[k] !== undefined) $(k).value = config[k];
+        ['minM', 'minS', 'maxM', 'maxS', 'surpriseFreq', 'probDist'].forEach(k => {
+          if (config[k] !== undefined && $(k)) $(k).value = config[k];
         });
         if (config.showStopwatch !== undefined) $('showStopwatch').checked = config.showStopwatch;
       } catch {}
@@ -478,18 +508,34 @@
     }
 
     function toggleFormInputs(disabled) {
-      ['maxM', 'maxS', 'showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
+      ['maxM', 'maxS', 'surpriseFreq', 'showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
       if (disabled) {
-        ['minM', 'minS'].forEach(id => $(id).disabled = true);
+        $('minM').disabled = $('minS').disabled = true;
       } else {
         gererChangementDistribution();
       }
     }
 
     function handleClick() {
-      if (presenceMode === 'final') validerPresenceFinale();
-      else if (running) declarerEchec("ABANDON");
-      else demarrerSession();
+      if (presenceMode === 'mid') {
+        clearTimeout(presenceTimer);
+        pauseOffsetMs += (Date.now() - pauseStartMs);
+        presenceMode = null;
+        lastSurpriseEndSecond = elapsedSeconds;
+
+        const btn = $('actionBtn');
+        btn.textContent = "ABANDONNER";
+        btn.className = "stop";
+      } else if (presenceMode === 'final') {
+        clearTimeout(presenceTimer);
+        presenceMode = null;
+        comptabiliserSession(true, configuredMaxSeconds);
+        reinitialiserBouton(`GAGNÉ (${formaterTemps(targetSeconds)})\nRECOMMENCER`);
+      } else if (running) {
+        declarerEchec("ABANDON");
+      } else {
+        demarrerSession();
+      }
     }
 
     function demarrerSession() {
@@ -504,7 +550,11 @@
 
       configuredMaxSeconds = maxTotal;
       targetSeconds = calculerTempsCible(minTotal, maxTotal, distMode);
+      surpriseProbPerSec = parseFloat($('surpriseFreq').value) || 0;
       elapsedSeconds = 0;
+      pauseOffsetMs = 0;
+      startTime = Date.now();
+      lastSurpriseEndSecond = -999;
       presenceMode = null;
       running = true;
 
@@ -512,46 +562,61 @@
       toggleChronoDisplay();
 
       const btn = $('actionBtn');
-      btn.innerText = "ABANDONNER";
+      btn.textContent = "ABANDONNER";
       btn.className = "stop";
-      $('stopwatch').innerText = "00:00";
+      $('stopwatch').textContent = "00:00";
 
       clearInterval(masterInterval);
-      masterInterval = setInterval(moteurTemps, 1000);
+      masterInterval = setInterval(moteurTemps, 200);
     }
 
     function moteurTemps() {
-      if (!running) return;
-      elapsedSeconds++;
-      $('stopwatch').innerText = formaterChrono(elapsedSeconds);
+      if (!running || presenceMode !== null) return;
 
-      if (presenceMode === null && elapsedSeconds >= targetSeconds) {
-        clearInterval(masterInterval);
-        running = false;
-        presenceMode = 'final';
-        countdownVal = 10;
-        tickFinal();
+      const currentSec = Math.floor((Date.now() - startTime - pauseOffsetMs) / 1000);
+      if (currentSec <= elapsedSeconds) return;
+
+      while (elapsedSeconds < currentSec) {
+        elapsedSeconds++;
+        $('stopwatch').textContent = formaterChrono(elapsedSeconds);
+
+        if (elapsedSeconds >= targetSeconds) {
+          clearInterval(masterInterval);
+          running = false;
+          activerCompteARebours('final', 10, "TERMINER", "NON VALIDÉ");
+          return;
+        }
+
+        if (surpriseProbPerSec > 0) {
+          const delaiEcoule = (elapsedSeconds - lastSurpriseEndSecond) >= 10;
+          const pasTropProcheFin = (targetSeconds - elapsedSeconds) > 20;
+
+          if (delaiEcoule && pasTropProcheFin && Math.random() < surpriseProbPerSec) {
+            pauseStartMs = Date.now();
+            activerCompteARebours('mid', 10, "PRÉSENT", "CONTRÔLE MANQUÉ");
+            return;
+          }
+        }
       }
     }
 
-    function tickFinal() {
-      if (presenceMode !== 'final') return;
-      const btn = $('actionBtn');
-      if (countdownVal > 0) {
-        btn.innerText = `TERMINER (${countdownVal}s)`;
-        btn.className = "presence";
-        countdownVal--;
-        presenceTimer = setTimeout(tickFinal, 1000);
-      } else {
-        declarerEchec("NON VALIDÉ");
-      }
-    }
+    function activerCompteARebours(mode, seconds, labelPrefix, failReason) {
+      presenceMode = mode;
+      countdownVal = seconds;
 
-    function validerPresenceFinale() {
-      clearTimeout(presenceTimer);
-      presenceMode = null;
-      comptabiliserSession(true, configuredMaxSeconds);
-      reinitialiserBouton(`GAGNÉ (${formaterTemps(targetSeconds)})\nRECOMMENCER`);
+      const step = () => {
+        if (presenceMode !== mode) return;
+        const btn = $('actionBtn');
+        if (countdownVal > 0) {
+          btn.textContent = `${labelPrefix} (${countdownVal}s)`;
+          btn.className = "presence";
+          countdownVal--;
+          presenceTimer = setTimeout(step, 1000);
+        } else {
+          declarerEchec(failReason);
+        }
+      };
+      step();
     }
 
     function declarerEchec(raison = "NON VALIDÉ") {
@@ -568,10 +633,31 @@
     function reinitialiserBouton(label = "COMMENCER") {
       toggleFormInputs(false);
       const btn = $('actionBtn');
-      btn.innerText = label;
+      btn.textContent = label;
       btn.className = "";
     }
 
+    // Écouteurs d'événements
+    $('btnExport').addEventListener('click', exporterSauvegarde);
+    $('btnImport').addEventListener('click', () => $('importFile').click());
+    $('importFile').addEventListener('change', importerSauvegarde);
+    $('actionBtn').addEventListener('click', handleClick);
+
+    $('minM').addEventListener('change', sauvegarderParametres);
+    $('minS').addEventListener('change', sauvegarderParametres);
+    $('maxM').addEventListener('change', sauvegarderParametres);
+    $('maxS').addEventListener('change', sauvegarderParametres);
+    $('surpriseFreq').addEventListener('change', sauvegarderParametres);
+    $('probDist').addEventListener('change', () => {
+      gererChangementDistribution();
+      sauvegarderParametres();
+    });
+    $('showStopwatch').addEventListener('change', () => {
+      toggleChronoDisplay();
+      sauvegarderParametres();
+    });
+
+    // Initialisation
     chargerParametres();
     gererChangementDistribution();
     toggleChronoDisplay();
