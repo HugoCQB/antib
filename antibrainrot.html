@@ -25,7 +25,7 @@
       text-align: center;
       padding: 10px 14px;
     }
-    .card, .backup-actions, button#actionBtn, #buySection {
+    .card, .backup-actions, button#actionBtn, #buySection, #bonusInfo {
       width: 100%;
       max-width: 360px;
     }
@@ -117,11 +117,15 @@
     .tier-box.locked span { color: #666; }
 
     .tier-box.completed-today {
-      border-color: #fff;
+      border: 1px solid #fff;
       color: #fff;
-      opacity: 0.85;
+      opacity: 1;
     }
-    .tier-box.completed-today span { color: #fff; }
+    .tier-box.completed-today span {
+      color: #fff;
+      font-weight: normal;
+    }
+
 
     .tier-box.selected-target {
       border: 2px solid #fff;
@@ -141,6 +145,30 @@
       font-family: "SF Mono", Monaco, Consolas, monospace;
     }
     .tier-rec { font-size: 0.58rem; margin-top: 1px; }
+    .tier-mult {
+      font-size: 0.55rem;
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+      color: #aaa;
+      margin-top: 1px;
+    }
+
+    #bonusInfo {
+      display: none;
+      background: #000;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 6px 10px;
+      margin-bottom: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #bbb;
+      line-height: 1.4;
+    }
+    #bonusInfo .highlight {
+      color: #fff;
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+      font-weight: 700;
+    }
 
     #buySection {
       margin-bottom: 6px;
@@ -280,6 +308,8 @@
     <div class="tiers-grid" id="tiersContainer"></div>
   </div>
 
+  <div id="bonusInfo"></div>
+
   <div id="buySection">
     <button id="btnBuyStreak">Acheter le streak</button>
   </div>
@@ -337,16 +367,16 @@
     const $ = id => document.getElementById(id);
 
     const DURATION_TIERS = [
-      { id: "1m", label: "≥ 1m", minSec: 60 },
-      { id: "5m", label: "≥ 5m", minSec: 300 },
-      { id: "10m", label: "≥ 10m", minSec: 600 },
-      { id: "15m", label: "≥ 15m", minSec: 900 },
-      { id: "30m", label: "≥ 30m", minSec: 1800 },
-      { id: "45m", label: "≥ 45m", minSec: 2700 },
-      { id: "60m", label: "≥ 60m", minSec: 3600 },
-      { id: "90m", label: "≥ 90m", minSec: 5400 },
-      { id: "120m", label: "≥ 120m", minSec: 7200 },
-      { id: "180m", label: "≥ 180m", minSec: 10800 }
+      { id: "1m", label: "≥ 1m", minSec: 60, rate: 0.25 },
+      { id: "5m", label: "≥ 5m", minSec: 300, rate: 0.30 },
+      { id: "10m", label: "≥ 10m", minSec: 600, rate: 0.35 },
+      { id: "15m", label: "≥ 15m", minSec: 900, rate: 0.40 },
+      { id: "30m", label: "≥ 30m", minSec: 1800, rate: 0.45 },
+      { id: "45m", label: "≥ 45m", minSec: 2700, rate: 0.50 },
+      { id: "60m", label: "≥ 60m", minSec: 3600, rate: 0.55 },
+      { id: "90m", label: "≥ 90m", minSec: 5400, rate: 0.60 },
+      { id: "120m", label: "≥ 120m", minSec: 7200, rate: 0.65 },
+      { id: "180m", label: "≥ 180m", minSec: 10800, rate: 0.75 }
     ];
 
     let selectedTierId = null;
@@ -427,7 +457,6 @@
       const maxSec = (parseInt($('maxM').value, 10) || 0) * 60 + (parseInt($('maxS').value, 10) || 0);
       let palierCorrespondant = null;
 
-      // On trouve le palier le plus élevé éligible avec le temps Max configuré
       for (let i = DURATION_TIERS.length - 1; i >= 0; i--) {
         if (maxSec >= DURATION_TIERS[i].minSec) {
           palierCorrespondant = DURATION_TIERS[i].id;
@@ -465,6 +494,7 @@
           <span class="tier-label">${t.label}</span>
           <span class="tier-val">${tData.streak}j</span>
           <span class="tier-rec">r:${tData.record}</span>
+          <span class="tier-mult">×${t.rate}</span>
         `;
         fragment.appendChild(box);
       });
@@ -472,16 +502,26 @@
       const container = $('tiersContainer');
       container.replaceChildren(fragment);
 
-      // Gestion de l'affichage du bouton d'achat
       const buySec = $('buySection');
       const buyBtn = $('btnBuyStreak');
+      const bonusInfo = $('bonusInfo');
       const tierData = selectedTierId ? data.tiers[selectedTierId] : null;
       const isSelectedDoneToday = tierData ? tierData.lastDate === today : false;
 
-      // Le bouton d'achat n'est proposé que si le palier n'est pas encore fait aujourd'hui
+      // Affichage du ratio bonus si le palier sélectionné est déjà fait aujourd'hui
+      if (selectedTierId && !running && isSelectedDoneToday) {
+        const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
+        const secParMin = Math.round(60 * tierObj.rate);
+        bonusInfo.style.display = 'block';
+        bonusInfo.innerHTML = `Palier <span class="highlight">${tierObj.label}</span> déjà validé : bonus réserve actif à <span class="highlight">×${tierObj.rate}</span> (1m tenue = ${secParMin}s épargnées)`;
+      } else {
+        bonusInfo.style.display = 'none';
+      }
+
+      // Bouton d'achat visible uniquement si le palier n'est pas encore fait aujourd'hui
       if (selectedTierId && !running && !isSelectedDoneToday) {
         const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
-        const costSec = tierObj.minSec * 2;
+        const costSec = Math.round(tierObj.minSec * 1.5);
         buySec.style.display = 'block';
         buyBtn.textContent = `Acheter streak ${tierObj.label} (${formaterTempsCourt(costSec)})`;
         buyBtn.disabled = (data.bankSeconds || 0) < costSec;
@@ -497,7 +537,7 @@
       const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
       if (!tierObj) return;
 
-      const costSec = tierObj.minSec * 2;
+      const costSec = Math.round(tierObj.minSec * 1.5);
       if ((data.bankSeconds || 0) < costSec) {
         alert("Solde de temps insuffisant pour acheter ce streak.");
         return;
@@ -523,7 +563,7 @@
 
     function exporterSauvegarde() {
       const exportData = {
-        version: 4,
+        version: 5,
         dateExport: new Date().toISOString(),
         config: localStorage.getItem('meditation_presence_config'),
         stats: localStorage.getItem('meditation_presence_stats')
@@ -570,6 +610,7 @@
       const today = recupererDateJour();
       let estComptabilise = false;
       let gainBanque = 0;
+      let tauxApplique = 0.25;
 
       if (estVictoire) {
         if (stats.lastActiveDate !== today) {
@@ -606,14 +647,16 @@
         }
 
         if (!estComptabilise) {
-          gainBanque = Math.floor(dureeReelle / 4);
+          const t = DURATION_TIERS.find(tier => tier.id === selectedTierId);
+          tauxApplique = t ? t.rate : 0.25;
+          gainBanque = Math.floor(dureeReelle * tauxApplique);
           stats.bankSeconds = (stats.bankSeconds || 0) + gainBanque;
         }
       }
 
       enregistrerDonneesStats(stats);
       rafraichirAffichageStats();
-      return { estComptabilise, gainBanque };
+      return { estComptabilise, gainBanque, tauxApplique };
     }
 
     function sauvegarderParametres() {
@@ -685,6 +728,7 @@
         $('minM').disabled = $('minS').disabled = true;
         $('surpriseFreq').disabled = true;
         $('buySection').style.display = 'none';
+        $('bonusInfo').style.display = 'none';
       } else {
         gererChangementDistribution();
         rafraichirAffichageStats();
@@ -708,7 +752,7 @@
         const res = comptabiliserSession(true, configuredMaxSeconds, targetSeconds);
         const statut = res.estComptabilise 
           ? "COMPTABILISÉ" 
-          : (res.gainBanque > 0 ? `+${formaterTemps(res.gainBanque)} ÉCONOMISÉ` : "NON COMPTABILISÉ");
+          : (res.gainBanque > 0 ? `+${formaterTemps(res.gainBanque)} (×${res.tauxApplique})` : "NON COMPTABILISÉ");
         const tempsFormate = formaterTemps(targetSeconds);
 
         reinitialiserBouton(`GAGNÉ - ${statut} (${tempsFormate})\nRECOMMENCER`);
@@ -828,7 +872,6 @@
     $('minM').addEventListener('input', sauvegarderParametres);
     $('minS').addEventListener('input', sauvegarderParametres);
 
-    // Ajustement dynamique au changement de Max
     $('maxM').addEventListener('input', actualiserPalierSelonMax);
     $('maxS').addEventListener('input', actualiserPalierSelonMax);
 
