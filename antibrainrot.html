@@ -238,6 +238,14 @@
       </div>
     </div>
     <div class="config-row">
+      <span class="row-label">Tirage</span>
+      <select id="probDist">
+        <option value="fixed">Durée fixe (Max)</option>
+        <option value="linear" selected>Linéaire (vers max)</option>
+        <option value="uniform">Uniforme (classique)</option>
+      </select>
+    </div>
+    <div class="config-row" id="rowSurprise">
       <span class="row-label">Contrôles</span>
       <select id="surpriseFreq">
         <option value="0">Aucun (0 %)</option>
@@ -245,16 +253,6 @@
         <option value="0.011" selected>Modéré (~1 / 90 s)</option>
         <option value="0.020">Fréquent (~1 / 50 s)</option>
         <option value="0.0333">Intense (~1 / 30 s)</option>
-      </select>
-    </div>
-    <div class="config-row">
-      <span class="row-label">Tirage</span>
-      <select id="probDist">
-        <option value="fixed">Durée fixe (Max)</option>
-        <option value="linear" selected>Linéaire (vers max)</option>
-        <option value="exponential">Exponentiel (fort)</option>
-        <option value="logarithmic">Logarithmique (doux)</option>
-        <option value="uniform">Uniforme (classique)</option>
       </select>
     </div>
     <div class="config-row">
@@ -476,8 +474,14 @@
 
     function gererChangementDistribution() {
       const isFixed = $('probDist').value === 'fixed';
+      
+      // En mode fixe : pas de minimum
       $('minM').disabled = $('minS').disabled = isFixed;
       $('rowMin').style.display = isFixed ? "none" : "flex";
+
+      // Contrôles surprises autorisés UNIQUEMENT en mode fixe
+      $('surpriseFreq').disabled = !isFixed;
+      $('rowSurprise').style.display = isFixed ? "flex" : "none";
     }
 
     function toggleChronoDisplay() {
@@ -499,17 +503,16 @@
       const u = Math.random();
       const factors = {
         linear: Math.sqrt(u),
-        exponential: Math.cbrt(u),
-        logarithmic: 1 - Math.pow(1 - u, 2),
         uniform: u
       };
       return minSec + Math.floor((factors[mode] ?? u) * (maxSec - minSec + 1));
     }
 
     function toggleFormInputs(disabled) {
-      ['maxM', 'maxS', 'surpriseFreq', 'showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
+      ['maxM', 'maxS', 'showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
       if (disabled) {
         $('minM').disabled = $('minS').disabled = true;
+        $('surpriseFreq').disabled = true;
       } else {
         gererChangementDistribution();
       }
@@ -549,7 +552,10 @@
 
       configuredMaxSeconds = maxTotal;
       targetSeconds = calculerTempsCible(minTotal, maxTotal, distMode);
-      surpriseProbPerSec = parseFloat($('surpriseFreq').value) || 0;
+      
+      // Les surprises ne s'activent qu'en mode durée fixe
+      surpriseProbPerSec = (distMode === 'fixed') ? (parseFloat($('surpriseFreq').value) || 0) : 0;
+      
       elapsedSeconds = 0;
       pauseOffsetMs = 0;
       startTime = Date.now();
