@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="color-scheme" content="dark">
+  <title>Présence — Méditation & Vigie</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 10px 14px;
+    }
+    .card, .backup-actions, button#actionBtn {
+      width: 100%;
+      max-width: 360px;
+    }
+    .backup-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .btn-secondary {
+      flex: 1;
+      background: #000;
+      border: 1px solid #fff;
+      color: #fff;
+      font-size: 0.68rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      appearance: none;
+    }
+    .btn-secondary:hover {
+      background: #fff;
+      color: #000;
+    }
+    .unified-stats-card, .config-card {
+      background: #000;
+      border: 1px solid #fff;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .unified-stats-card { padding: 8px 10px; }
+    .config-card { padding: 8px 12px; }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .stat-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 1px;
+      font-weight: 600;
+    }
+    .stat-val {
+      font-size: 1.05rem;
+      font-weight: 700;
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+    }
+    .stat-sub { font-size: 0.68rem; margin-top: 1px; }
+
+    .tiers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+      gap: 4px;
+    }
+    .tier-box {
+      background: #000;
+      border: 1px solid #fff;
+      border-radius: 6px;
+      padding: 4px 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.25s ease;
+    }
+    .tier-box.locked {
+      border-color: #333;
+      color: #555;
+      opacity: 0.4;
+    }
+    .tier-box.locked span { color: #555; }
+    .tier-box.next-target { box-shadow: 0 0 4px rgba(255, 255, 255, 0.35); }
+    .tier-box.completed-today { border-color: #888; }
+    .tier-label { font-size: 0.64rem; font-weight: 700; margin-bottom: 1px; }
+    .tier-val {
+      font-size: 0.78rem;
+      font-weight: 700;
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+    }
+    .tier-rec { font-size: 0.58rem; margin-top: 1px; }
+
+    .config-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .row-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .inputs-wrapper { display: flex; align-items: center; gap: 4px; }
+    .unit-tag { font-size: 0.72rem; margin-right: 3px; font-weight: 600; }
+
+    input[type="number"], select {
+      background: #000;
+      border: 1px solid #fff;
+      color: #fff;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+      appearance: none;
+    }
+    input[type="number"] {
+      padding: 4px 2px;
+      width: 48px;
+      text-align: center;
+      font-weight: bold;
+    }
+    select { padding: 4px 6px; max-width: 185px; font-weight: 600; }
+    input:disabled, select:disabled { border: 1px solid #fff; -webkit-text-fill-color: #fff; }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .checkbox-label input { width: 15px; height: 15px; accent-color: #fff; cursor: pointer; }
+
+    button#actionBtn {
+      background: #fff;
+      color: #000;
+      border: 1px solid #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      min-height: 44px;
+      line-height: 1.3;
+      white-space: pre-line;
+      margin-bottom: 6px;
+      transition: all 0.2s ease;
+      touch-action: manipulation;
+      appearance: none;
+    }
+    button#actionBtn:active { transform: scale(0.98); }
+    button#actionBtn.stop, button#actionBtn.presence {
+      background: #000;
+      color: #fff;
+    }
+    button#actionBtn.stop:active, button#actionBtn.presence:active {
+      background: #fff;
+      color: #000;
+    }
+
+    #stopwatch {
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+      font-size: 1.15rem;
+      letter-spacing: 2px;
+      min-height: 22px;
+      font-weight: 700;
+    }
+    #stopwatch.hidden, #importFile { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="backup-actions">
+    <button class="btn-secondary" onclick="exporterSauvegarde()">Exporter</button>
+    <button class="btn-secondary" onclick="$('importFile').click()">Importer</button>
+    <input type="file" id="importFile" accept=".json" onchange="importerSauvegarde(event)">
+  </div>
+
+  <div class="unified-stats-card card">
+    <div class="stat-box">
+      <span class="stat-label">Série Quotidienne</span>
+      <span class="stat-val" id="statDayStreak">0 j</span>
+      <span class="stat-sub" id="statDayStreakRecord">Record : 0 j</span>
+    </div>
+    <div class="tiers-grid" id="tiersContainer"></div>
+  </div>
+
+  <div class="config-card card">
+    <div class="config-row" id="rowMin">
+      <span class="row-label">Min</span>
+      <div class="inputs-wrapper">
+        <input type="number" id="minM" value="0" min="0" max="999" onchange="sauvegarderParametres()">
+        <span class="unit-tag">m</span>
+        <input type="number" id="minS" value="5" min="0" max="59" onchange="sauvegarderParametres()">
+        <span class="unit-tag">s</span>
+      </div>
+    </div>
+    <div class="config-row">
+      <span class="row-label">Max</span>
+      <div class="inputs-wrapper">
+        <input type="number" id="maxM" value="3" min="0" max="999" onchange="sauvegarderParametres()">
+        <span class="unit-tag">m</span>
+        <input type="number" id="maxS" value="3" min="0" max="59" onchange="sauvegarderParametres()">
+        <span class="unit-tag">s</span>
+      </div>
+    </div>
+    <div class="config-row">
+      <span class="row-label">Tirage</span>
+      <select id="probDist" onchange="gererChangementDistribution(); sauvegarderParametres();">
+        <option value="fixed">Durée fixe (Max)</option>
+        <option value="linear" selected>Linéaire (vers max)</option>
+        <option value="exponential">Exponentiel (fort)</option>
+        <option value="logarithmic">Logarithmique (doux)</option>
+        <option value="uniform">Uniforme (classique)</option>
+      </select>
+    </div>
+    <div class="config-row">
+      <span class="row-label">Chrono</span>
+      <label class="checkbox-label">
+        <input type="checkbox" id="showStopwatch" checked onchange="toggleChronoDisplay(); sauvegarderParametres();">
+        <span>Afficher le temps</span>
+      </label>
+    </div>
+  </div>
+
+  <button id="actionBtn" onclick="handleClick()">COMMENCER</button>
+  <div id="stopwatch">00:00</div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const DURATION_TIERS = [
+      { id: "1m", label: "≥ 1m", minSec: 60 },
+      { id: "5m", label: "≥ 5m", minSec: 300 },
+      { id: "10m", label: "≥ 10m", minSec: 600 },
+      { id: "15m", label: "≥ 15m", minSec: 900 },
+      { id: "30m", label: "≥ 30m", minSec: 1800 },
+      { id: "45m", label: "≥ 45m", minSec: 2700 },
+      { id: "60m", label: "≥ 60m", minSec: 3600 },
+      { id: "90m", label: "≥ 90m", minSec: 5400 },
+      { id: "120m", label: "≥ 120m", minSec: 7200 },
+      { id: "180m", label: "≥ 180m", minSec: 10800 }
+    ];
+
+    let running = false;
+    let presenceMode = null;
+    let countdownVal = 10;
+    let targetSeconds = 0;
+    let configuredMaxSeconds = 0;
+    let elapsedSeconds = 0;
+    let masterInterval = null;
+    let presenceTimer = null;
+
+    const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE"); };
+    document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
+    window.addEventListener("pagehide", stopIfRunning);
+    window.addEventListener("blur", stopIfRunning);
+
+    function recupererDateJour() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function calculerEcartJours(d1, d2) {
+      if (!d1 || !d2) return 999;
+      return Math.round((new Date(d2) - new Date(d1)) / 864e5);
+    }
+
+    function chargerDonneesStats() {
+      const defaut = { lastActiveDate: null, dayStreak: 0, dayStreakRecord: 0, tiers: {} };
+      DURATION_TIERS.forEach(t => defaut.tiers[t.id] = { streak: 0, record: 0, lastDate: null });
+
+      try {
+        const raw = localStorage.getItem('meditation_presence_stats');
+        if (!raw) return defaut;
+        const data = Object.assign(defaut, JSON.parse(raw));
+        const today = recupererDateJour();
+
+        if (calculerEcartJours(data.lastActiveDate, today) > 1) data.dayStreak = 0;
+        data.dayStreakRecord = Math.max(data.dayStreak, data.dayStreakRecord || 0);
+
+        DURATION_TIERS.forEach(t => {
+          const tier = data.tiers[t.id] = data.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
+          if (calculerEcartJours(tier.lastDate, today) > 1) tier.streak = 0;
+          tier.record = Math.max(tier.streak, tier.record || 0);
+        });
+        return data;
+      } catch {
+        return defaut;
+      }
+    }
+
+    function enregistrerDonneesStats(data) {
+      try { localStorage.setItem('meditation_presence_stats', JSON.stringify(data)); } catch {}
+    }
+
+    function rafraichirAffichageStats() {
+      const data = chargerDonneesStats();
+      const today = recupererDateJour();
+
+      $('statDayStreak').innerText = `${data.dayStreak} j`;
+      $('statDayStreakRecord').innerText = `Record : ${data.dayStreakRecord || 0} j`;
+
+      const container = $('tiersContainer');
+      container.innerHTML = "";
+      let foundNextTarget = false;
+
+      DURATION_TIERS.forEach((t, i) => {
+        const tData = data.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
+        const isDoneToday = tData.lastDate === today;
+        const prevDone = i === 0 || data.tiers[DURATION_TIERS[i - 1].id]?.lastDate === today;
+
+        let statusClass = "locked";
+        if (isDoneToday) {
+          statusClass = "completed-today";
+        } else if (prevDone && !foundNextTarget) {
+          statusClass = "next-target";
+          foundNextTarget = true;
+        }
+
+        const box = document.createElement('div');
+        box.className = `tier-box ${statusClass}`;
+        box.innerHTML = `
+          <span class="tier-label">${t.label}</span>
+          <span class="tier-val">${tData.streak}j</span>
+          <span class="tier-rec">r:${tData.record}</span>
+        `;
+        container.appendChild(box);
+      });
+    }
+
+    function exporterSauvegarde() {
+      const blob = new Blob([JSON.stringify({
+        version: 3,
+        dateExport: new Date().toISOString(),
+        config: localStorage.getItem('meditation_presence_config'),
+        stats: localStorage.getItem('meditation_presence_stats')
+      }, null, 2)], { type: "application/json" });
+
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `presence-backup-${recupererDateJour()}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function importerSauvegarde(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.stats) localStorage.setItem('meditation_presence_stats', data.stats);
+          if (data.config) localStorage.setItem('meditation_presence_config', data.config);
+          chargerParametres();
+          gererChangementDistribution();
+          toggleChronoDisplay();
+          rafraichirAffichageStats();
+          alert("Données importées avec succès.");
+        } catch {
+          alert("Erreur lors de l'import : fichier invalide.");
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = "";
+    }
+
+    function comptabiliserSession(estVictoire, maxSecSession) {
+      const stats = chargerDonneesStats();
+      const today = recupererDateJour();
+
+      if (estVictoire) {
+        if (stats.lastActiveDate !== today) {
+          stats.dayStreak = (calculerEcartJours(stats.lastActiveDate, today) === 1) ? stats.dayStreak + 1 : 1;
+          stats.lastActiveDate = today;
+        }
+        stats.dayStreakRecord = Math.max(stats.dayStreak, stats.dayStreakRecord || 0);
+
+        for (let i = 0; i < DURATION_TIERS.length; i++) {
+          const t = DURATION_TIERS[i];
+          const tier = stats.tiers[t.id] = stats.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
+
+          if (tier.lastDate === today) continue;
+          if (i > 0 && stats.tiers[DURATION_TIERS[i - 1].id].lastDate !== today) break;
+
+          if (maxSecSession >= t.minSec) {
+            tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
+            tier.lastDate = today;
+            tier.record = Math.max(tier.streak, tier.record || 0);
+          }
+          break;
+        }
+      }
+
+      enregistrerDonneesStats(stats);
+      rafraichirAffichageStats();
+    }
+
+    function sauvegarderParametres() {
+      try {
+        localStorage.setItem('meditation_presence_config', JSON.stringify({
+          minM: $('minM').value, minS: $('minS').value,
+          maxM: $('maxM').value, maxS: $('maxS').value,
+          probDist: $('probDist').value,
+          showStopwatch: $('showStopwatch').checked
+        }));
+      } catch {}
+    }
+
+    function chargerParametres() {
+      try {
+        const config = JSON.parse(localStorage.getItem('meditation_presence_config') || '{}');
+        ['minM', 'minS', 'maxM', 'maxS', 'probDist'].forEach(k => {
+          if (config[k] !== undefined) $(k).value = config[k];
+        });
+        if (config.showStopwatch !== undefined) $('showStopwatch').checked = config.showStopwatch;
+      } catch {}
+    }
+
+    function gererChangementDistribution() {
+      const isFixed = $('probDist').value === 'fixed';
+      $('minM').disabled = $('minS').disabled = isFixed;
+      $('rowMin').style.display = isFixed ? "none" : "flex";
+    }
+
+    function toggleChronoDisplay() {
+      $('stopwatch').classList.toggle('hidden', !$('showStopwatch').checked);
+    }
+
+    function formaterTemps(totalSec) {
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return (m > 0 && s > 0) ? `${m}m ${s}s` : (m > 0 ? `${m}m` : `${s}s`);
+    }
+
+    function formaterChrono(sec) {
+      return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+    }
+
+    function calculerTempsCible(minSec, maxSec, mode) {
+      if (mode === 'fixed' || minSec >= maxSec) return maxSec;
+      const u = Math.random();
+      const factors = {
+        linear: Math.sqrt(u),
+        exponential: Math.cbrt(u),
+        logarithmic: 1 - Math.pow(1 - u, 2),
+        uniform: u
+      };
+      return minSec + Math.floor((factors[mode] ?? u) * (maxSec - minSec + 1));
+    }
+
+    function toggleFormInputs(disabled) {
+      ['maxM', 'maxS', 'showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
+      if (disabled) {
+        ['minM', 'minS'].forEach(id => $(id).disabled = true);
+      } else {
+        gererChangementDistribution();
+      }
+    }
+
+    function handleClick() {
+      if (presenceMode === 'final') validerPresenceFinale();
+      else if (running) declarerEchec("ABANDON");
+      else demarrerSession();
+    }
+
+    function demarrerSession() {
+      sauvegarderParametres();
+
+      const minTotal = (parseInt($('minM').value, 10) || 0) * 60 + (parseInt($('minS').value, 10) || 0);
+      const maxTotal = (parseInt($('maxM').value, 10) || 0) * 60 + (parseInt($('maxS').value, 10) || 0);
+      const distMode = $('probDist').value;
+
+      if (maxTotal <= 0) return alert("La durée maximum doit être supérieure à 0.");
+      if (distMode !== 'fixed' && minTotal > maxTotal) return alert("Le minimum ne peut pas dépasser le maximum.");
+
+      configuredMaxSeconds = maxTotal;
+      targetSeconds = calculerTempsCible(minTotal, maxTotal, distMode);
+      elapsedSeconds = 0;
+      presenceMode = null;
+      running = true;
+
+      toggleFormInputs(true);
+      toggleChronoDisplay();
+
+      const btn = $('actionBtn');
+      btn.innerText = "ABANDONNER";
+      btn.className = "stop";
+      $('stopwatch').innerText = "00:00";
+
+      clearInterval(masterInterval);
+      masterInterval = setInterval(moteurTemps, 1000);
+    }
+
+    function moteurTemps() {
+      if (!running) return;
+      elapsedSeconds++;
+      $('stopwatch').innerText = formaterChrono(elapsedSeconds);
+
+      if (presenceMode === null && elapsedSeconds >= targetSeconds) {
+        clearInterval(masterInterval);
+        running = false;
+        presenceMode = 'final';
+        countdownVal = 10;
+        tickFinal();
+      }
+    }
+
+    function tickFinal() {
+      if (presenceMode !== 'final') return;
+      const btn = $('actionBtn');
+      if (countdownVal > 0) {
+        btn.innerText = `TERMINER (${countdownVal}s)`;
+        btn.className = "presence";
+        countdownVal--;
+        presenceTimer = setTimeout(tickFinal, 1000);
+      } else {
+        declarerEchec("NON VALIDÉ");
+      }
+    }
+
+    function validerPresenceFinale() {
+      clearTimeout(presenceTimer);
+      presenceMode = null;
+      comptabiliserSession(true, configuredMaxSeconds);
+      reinitialiserBouton(`GAGNÉ (${formaterTemps(targetSeconds)})\nRECOMMENCER`);
+    }
+
+    function declarerEchec(raison = "NON VALIDÉ") {
+      presenceMode = null;
+      running = false;
+      clearInterval(masterInterval);
+      clearTimeout(presenceTimer);
+
+      const tempsTenu = formaterTemps(elapsedSeconds);
+      comptabiliserSession(false, configuredMaxSeconds);
+      reinitialiserBouton(`PERDU : ${raison} (${tempsTenu})\nRECOMMENCER`);
+    }
+
+    function reinitialiserBouton(label = "COMMENCER") {
+      toggleFormInputs(false);
+      const btn = $('actionBtn');
+      btn.innerText = label;
+      btn.className = "";
+    }
+
+    chargerParametres();
+    gererChangementDistribution();
+    toggleChronoDisplay();
+    rafraichirAffichageStats();
+  </script>
+</body>
+</html>
