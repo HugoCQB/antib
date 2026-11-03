@@ -105,37 +105,34 @@
       flex-direction: column;
       align-items: center;
       transition: opacity 0.2s, border-color 0.2s, transform 0.1s;
+      cursor: pointer;
     }
+    .tier-box:active { transform: scale(0.97); }
 
     .tier-box.locked {
       border-color: #444;
       color: #666;
       opacity: 0.55;
-      cursor: pointer;
     }
     .tier-box.locked span { color: #666; }
-    .tier-box.locked:active { transform: scale(0.97); }
 
     .tier-box.completed-today {
       border-color: #fff;
       color: #fff;
-      opacity: 1;
-      cursor: default;
+      opacity: 0.85;
     }
     .tier-box.completed-today span { color: #fff; }
 
     .tier-box.selected-target {
       border: 2px solid #fff;
       box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
-      opacity: 1;
-      color: #fff;
-      cursor: pointer;
+      opacity: 1 !important;
+      color: #fff !important;
     }
     .tier-box.selected-target span {
-      color: #fff;
+      color: #fff !important;
       font-weight: 900 !important;
     }
-    .tier-box.selected-target:active { transform: scale(0.97); }
 
     .tier-label { font-size: 0.64rem; font-weight: 700; margin-bottom: 1px; }
     .tier-val {
@@ -145,7 +142,6 @@
     }
     .tier-rec { font-size: 0.58rem; margin-top: 1px; }
 
-    /* Bouton d'achat */
     #buySection {
       margin-bottom: 6px;
       display: none;
@@ -410,19 +406,43 @@
       try { localStorage.setItem('meditation_presence_stats', JSON.stringify(data)); } catch {}
     }
 
-    function selectionnerPalier(id, isDoneToday) {
-      if (running || isDoneToday) return;
-      selectedTierId = (selectedTierId === id) ? null : id;
+    function selectionnerPalier(id) {
+      if (running) return;
+
+      if (selectedTierId === id) {
+        selectedTierId = null;
+      } else {
+        selectedTierId = id;
+        const t = DURATION_TIERS.find(tier => tier.id === id);
+        if (t) {
+          $('maxM').value = Math.floor(t.minSec / 60);
+          $('maxS').value = t.minSec % 60;
+          sauvegarderParametres();
+        }
+      }
+      rafraichirAffichageStats();
+    }
+
+    function actualiserPalierSelonMax() {
+      const maxSec = (parseInt($('maxM').value, 10) || 0) * 60 + (parseInt($('maxS').value, 10) || 0);
+      let palierCorrespondant = null;
+
+      // On trouve le palier le plus élevé éligible avec le temps Max configuré
+      for (let i = DURATION_TIERS.length - 1; i >= 0; i--) {
+        if (maxSec >= DURATION_TIERS[i].minSec) {
+          palierCorrespondant = DURATION_TIERS[i].id;
+          break;
+        }
+      }
+
+      selectedTierId = palierCorrespondant;
+      sauvegarderParametres();
       rafraichirAffichageStats();
     }
 
     function rafraichirAffichageStats() {
       const data = chargerDonneesStats();
       const today = recupererDateJour();
-
-      if (selectedTierId && data.tiers[selectedTierId]?.lastDate === today) {
-        selectedTierId = null;
-      }
 
       $('statDayStreak').textContent = `${data.dayStreak} j`;
       $('statDayStreakRecord').textContent = `Record : ${data.dayStreakRecord || 0} j`;
@@ -440,7 +460,7 @@
 
         const box = document.createElement('div');
         box.className = `tier-box ${statusClass}`;
-        box.onclick = () => selectionnerPalier(t.id, isDoneToday);
+        box.onclick = () => selectionnerPalier(t.id);
         box.innerHTML = `
           <span class="tier-label">${t.label}</span>
           <span class="tier-val">${tData.streak}j</span>
@@ -455,7 +475,11 @@
       // Gestion de l'affichage du bouton d'achat
       const buySec = $('buySection');
       const buyBtn = $('btnBuyStreak');
-      if (selectedTierId && !running) {
+      const tierData = selectedTierId ? data.tiers[selectedTierId] : null;
+      const isSelectedDoneToday = tierData ? tierData.lastDate === today : false;
+
+      // Le bouton d'achat n'est proposé que si le palier n'est pas encore fait aujourd'hui
+      if (selectedTierId && !running && !isSelectedDoneToday) {
         const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
         const costSec = tierObj.minSec * 2;
         buySec.style.display = 'block';
@@ -479,23 +503,19 @@
         return;
       }
 
-      // Déduction du coût
       data.bankSeconds -= costSec;
 
-      // Incrémentation de la série quotidienne si pas encore active aujourd'hui
       if (data.lastActiveDate !== today) {
         data.dayStreak = (calculerEcartJours(data.lastActiveDate, today) === 1) ? data.dayStreak + 1 : 1;
         data.lastActiveDate = today;
       }
       data.dayStreakRecord = Math.max(data.dayStreak, data.dayStreakRecord || 0);
 
-      // Validation du palier
       const tier = data.tiers[tierObj.id] = data.tiers[tierObj.id] || { streak: 0, record: 0, lastDate: null };
       tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
       tier.lastDate = today;
       tier.record = Math.max(tier.streak, tier.record || 0);
 
-      selectedTierId = null;
       enregistrerDonneesStats(data);
       rafraichirAffichageStats();
       alert(`Streak ${tierObj.label} acheté avec succès !`);
@@ -535,7 +555,7 @@
           chargerParametres();
           gererChangementDistribution();
           toggleChronoDisplay();
-          rafraichirAffichageStats();
+          actualiserPalierSelonMax();
           alert("Données importées avec succès.");
         } catch {
           alert("Erreur lors de l'import : fichier corrompu ou invalide.");
@@ -567,7 +587,6 @@
               tier.lastDate = today;
               tier.record = Math.max(tier.streak, tier.record || 0);
               estComptabilise = true;
-              selectedTierId = null;
             }
           }
         } else {
@@ -586,7 +605,6 @@
           }
         }
 
-        // Si la session n'a pas validé de nouveau palier aujourd'hui, le temps réel / 4 est stocké
         if (!estComptabilise) {
           gainBanque = Math.floor(dureeReelle / 4);
           stats.bankSeconds = (stats.bankSeconds || 0) + gainBanque;
@@ -807,10 +825,13 @@
     $('actionBtn').addEventListener('click', handleClick);
     $('btnBuyStreak').addEventListener('click', acheterStreak);
 
-    $('minM').addEventListener('change', sauvegarderParametres);
-    $('minS').addEventListener('change', sauvegarderParametres);
-    $('maxM').addEventListener('change', sauvegarderParametres);
-    $('maxS').addEventListener('change', sauvegarderParametres);
+    $('minM').addEventListener('input', sauvegarderParametres);
+    $('minS').addEventListener('input', sauvegarderParametres);
+
+    // Ajustement dynamique au changement de Max
+    $('maxM').addEventListener('input', actualiserPalierSelonMax);
+    $('maxS').addEventListener('input', actualiserPalierSelonMax);
+
     $('surpriseFreq').addEventListener('change', sauvegarderParametres);
     $('probDist').addEventListener('change', () => {
       gererChangementDistribution();
@@ -825,7 +846,7 @@
     chargerParametres();
     gererChangementDistribution();
     toggleChronoDisplay();
-    rafraichirAffichageStats();
+    actualiserPalierSelonMax();
   </script>
 </body>
 </html>
