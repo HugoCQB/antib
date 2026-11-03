@@ -25,7 +25,7 @@
       text-align: center;
       padding: 10px 14px;
     }
-    .card, .backup-actions, button#actionBtn {
+    .card, .backup-actions, button#actionBtn, #buySection {
       width: 100%;
       max-width: 360px;
     }
@@ -65,6 +65,13 @@
     .unified-stats-card { padding: 8px 10px; }
     .config-card { padding: 8px 12px; }
 
+    .stats-header {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      border-bottom: 1px solid #222;
+      padding-bottom: 6px;
+    }
     .stat-box {
       display: flex;
       flex-direction: column;
@@ -100,7 +107,6 @@
       transition: opacity 0.2s, border-color 0.2s, transform 0.1s;
     }
 
-    /* Non validé : gris et sélectionnable */
     .tier-box.locked {
       border-color: #444;
       color: #666;
@@ -110,7 +116,6 @@
     .tier-box.locked span { color: #666; }
     .tier-box.locked:active { transform: scale(0.97); }
 
-    /* Déjà validé aujourd'hui : blanc et non sélectionnable */
     .tier-box.completed-today {
       border-color: #fff;
       color: #fff;
@@ -119,7 +124,6 @@
     }
     .tier-box.completed-today span { color: #fff; }
 
-    /* Palier cible sélectionné : gras et surbrillance */
     .tier-box.selected-target {
       border: 2px solid #fff;
       box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
@@ -140,6 +144,35 @@
       font-family: "SF Mono", Monaco, Consolas, monospace;
     }
     .tier-rec { font-size: 0.58rem; margin-top: 1px; }
+
+    /* Bouton d'achat */
+    #buySection {
+      margin-bottom: 6px;
+      display: none;
+    }
+    #btnBuyStreak {
+      width: 100%;
+      background: #000;
+      color: #fff;
+      border: 1px dashed #fff;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.2s, color 0.2s;
+    }
+    #btnBuyStreak:hover:not(:disabled) {
+      background: #fff;
+      color: #000;
+    }
+    #btnBuyStreak:disabled {
+      border-color: #444;
+      color: #555;
+      cursor: not-allowed;
+    }
 
     .config-row {
       display: flex;
@@ -236,12 +269,23 @@
   </div>
 
   <div class="unified-stats-card card">
-    <div class="stat-box">
-      <span class="stat-label">Série Quotidienne</span>
-      <span class="stat-val" id="statDayStreak">0 j</span>
-      <span class="stat-sub" id="statDayStreakRecord">Record : 0 j</span>
+    <div class="stats-header">
+      <div class="stat-box">
+        <span class="stat-label">Série Quotidienne</span>
+        <span class="stat-val" id="statDayStreak">0 j</span>
+        <span class="stat-sub" id="statDayStreakRecord">Record : 0 j</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Solde Temps</span>
+        <span class="stat-val" id="statBank">0s</span>
+        <span class="stat-sub">Réserve de streak</span>
+      </div>
     </div>
     <div class="tiers-grid" id="tiersContainer"></div>
+  </div>
+
+  <div id="buySection">
+    <button id="btnBuyStreak">Acheter le streak</button>
   </div>
 
   <div class="config-card card">
@@ -312,7 +356,7 @@
     let selectedTierId = null;
 
     let running = false;
-    let presenceMode = null; // 'mid' | 'final' | null
+    let presenceMode = null;
     let countdownVal = 0;
     let targetSeconds = 0;
     let configuredMaxSeconds = 0;
@@ -339,7 +383,7 @@
     }
 
     function chargerDonneesStats() {
-      const defaut = { lastActiveDate: null, dayStreak: 0, dayStreakRecord: 0, tiers: {} };
+      const defaut = { lastActiveDate: null, dayStreak: 0, dayStreakRecord: 0, bankSeconds: 0, tiers: {} };
       DURATION_TIERS.forEach(t => defaut.tiers[t.id] = { streak: 0, record: 0, lastDate: null });
 
       try {
@@ -382,6 +426,7 @@
 
       $('statDayStreak').textContent = `${data.dayStreak} j`;
       $('statDayStreakRecord').textContent = `Record : ${data.dayStreakRecord || 0} j`;
+      $('statBank').textContent = formaterTempsCourt(data.bankSeconds || 0);
 
       const fragment = document.createDocumentFragment();
 
@@ -391,9 +436,7 @@
         const isSelected = selectedTierId === t.id;
 
         let statusClass = isDoneToday ? "completed-today" : "locked";
-        if (isSelected) {
-          statusClass += " selected-target";
-        }
+        if (isSelected) statusClass += " selected-target";
 
         const box = document.createElement('div');
         box.className = `tier-box ${statusClass}`;
@@ -408,11 +451,59 @@
 
       const container = $('tiersContainer');
       container.replaceChildren(fragment);
+
+      // Gestion de l'affichage du bouton d'achat
+      const buySec = $('buySection');
+      const buyBtn = $('btnBuyStreak');
+      if (selectedTierId && !running) {
+        const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
+        const costSec = tierObj.minSec * 2;
+        buySec.style.display = 'block';
+        buyBtn.textContent = `Acheter streak ${tierObj.label} (${formaterTempsCourt(costSec)})`;
+        buyBtn.disabled = (data.bankSeconds || 0) < costSec;
+      } else {
+        buySec.style.display = 'none';
+      }
+    }
+
+    function acheterStreak() {
+      if (!selectedTierId || running) return;
+      const data = chargerDonneesStats();
+      const today = recupererDateJour();
+      const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
+      if (!tierObj) return;
+
+      const costSec = tierObj.minSec * 2;
+      if ((data.bankSeconds || 0) < costSec) {
+        alert("Solde de temps insuffisant pour acheter ce streak.");
+        return;
+      }
+
+      // Déduction du coût
+      data.bankSeconds -= costSec;
+
+      // Incrémentation de la série quotidienne si pas encore active aujourd'hui
+      if (data.lastActiveDate !== today) {
+        data.dayStreak = (calculerEcartJours(data.lastActiveDate, today) === 1) ? data.dayStreak + 1 : 1;
+        data.lastActiveDate = today;
+      }
+      data.dayStreakRecord = Math.max(data.dayStreak, data.dayStreakRecord || 0);
+
+      // Validation du palier
+      const tier = data.tiers[tierObj.id] = data.tiers[tierObj.id] || { streak: 0, record: 0, lastDate: null };
+      tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
+      tier.lastDate = today;
+      tier.record = Math.max(tier.streak, tier.record || 0);
+
+      selectedTierId = null;
+      enregistrerDonneesStats(data);
+      rafraichirAffichageStats();
+      alert(`Streak ${tierObj.label} acheté avec succès !`);
     }
 
     function exporterSauvegarde() {
       const exportData = {
-        version: 3,
+        version: 4,
         dateExport: new Date().toISOString(),
         config: localStorage.getItem('meditation_presence_config'),
         stats: localStorage.getItem('meditation_presence_stats')
@@ -454,10 +545,11 @@
       event.target.value = "";
     }
 
-    function comptabiliserSession(estVictoire, maxSecSession) {
+    function comptabiliserSession(estVictoire, maxSecSession, dureeReelle) {
       const stats = chargerDonneesStats();
       const today = recupererDateJour();
       let estComptabilise = false;
+      let gainBanque = 0;
 
       if (estVictoire) {
         if (stats.lastActiveDate !== today) {
@@ -493,11 +585,17 @@
             break;
           }
         }
+
+        // Si la session n'a pas validé de nouveau palier aujourd'hui, le temps réel / 4 est stocké
+        if (!estComptabilise) {
+          gainBanque = Math.floor(dureeReelle / 4);
+          stats.bankSeconds = (stats.bankSeconds || 0) + gainBanque;
+        }
       }
 
       enregistrerDonneesStats(stats);
       rafraichirAffichageStats();
-      return estComptabilise;
+      return { estComptabilise, gainBanque };
     }
 
     function sauvegarderParametres() {
@@ -524,7 +622,6 @@
 
     function gererChangementDistribution() {
       const isFixed = $('probDist').value === 'fixed';
-      
       $('minM').disabled = $('minS').disabled = isFixed;
       $('rowMin').style.display = isFixed ? "none" : "flex";
 
@@ -540,6 +637,14 @@
       const m = Math.floor(totalSec / 60);
       const s = totalSec % 60;
       return (m > 0 && s > 0) ? `${m}m ${s}s` : (m > 0 ? `${m}m` : `${s}s`);
+    }
+
+    function formaterTempsCourt(totalSec) {
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      if (m > 0 && s > 0) return `${m}m${s}s`;
+      if (m > 0) return `${m}m`;
+      return `${s}s`;
     }
 
     function formaterChrono(sec) {
@@ -561,8 +666,10 @@
       if (disabled) {
         $('minM').disabled = $('minS').disabled = true;
         $('surpriseFreq').disabled = true;
+        $('buySection').style.display = 'none';
       } else {
         gererChangementDistribution();
+        rafraichirAffichageStats();
       }
     }
 
@@ -580,8 +687,10 @@
         clearTimeout(presenceTimer);
         presenceMode = null;
 
-        const estComptabilise = comptabiliserSession(true, configuredMaxSeconds);
-        const statut = estComptabilise ? "COMPTABILISÉ" : "NON COMPTABILISÉ";
+        const res = comptabiliserSession(true, configuredMaxSeconds, targetSeconds);
+        const statut = res.estComptabilise 
+          ? "COMPTABILISÉ" 
+          : (res.gainBanque > 0 ? `+${formaterTemps(res.gainBanque)} ÉCONOMISÉ` : "NON COMPTABILISÉ");
         const tempsFormate = formaterTemps(targetSeconds);
 
         reinitialiserBouton(`GAGNÉ - ${statut} (${tempsFormate})\nRECOMMENCER`);
@@ -680,7 +789,7 @@
       clearTimeout(presenceTimer);
 
       const tempsTenu = formaterTemps(elapsedSeconds);
-      comptabiliserSession(false, configuredMaxSeconds);
+      comptabiliserSession(false, configuredMaxSeconds, 0);
       reinitialiserBouton(`PERDU : ${raison} (${tempsTenu})\nRECOMMENCER`);
     }
 
@@ -696,6 +805,7 @@
     $('btnImport').addEventListener('click', () => $('importFile').click());
     $('importFile').addEventListener('change', importerSauvegarde);
     $('actionBtn').addEventListener('click', handleClick);
+    $('btnBuyStreak').addEventListener('click', acheterStreak);
 
     $('minM').addEventListener('change', sauvegarderParametres);
     $('minS').addEventListener('change', sauvegarderParametres);
