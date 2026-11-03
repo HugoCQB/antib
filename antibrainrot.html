@@ -16,7 +16,7 @@
       margin: 0;
       background: #000;
       color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -25,7 +25,7 @@
       text-align: center;
       padding: 10px 14px;
     }
-    .card, .backup-actions, button#actionBtn, #buySection, #bonusInfo {
+    .card, .backup-actions, #actionBtn, #buySection, #bonusInfo {
       width: 100%;
       max-width: 360px;
     }
@@ -47,12 +47,9 @@
       font-weight: 600;
       text-transform: uppercase;
       transition: background 0.2s, color 0.2s;
-      appearance: none;
     }
-    .btn-secondary:hover {
-      background: #fff;
-      color: #000;
-    }
+    .btn-secondary:hover { background: #fff; color: #000; }
+    
     .unified-stats-card, .config-card {
       background: #000;
       border: 1px solid #fff;
@@ -69,14 +66,9 @@
       display: flex;
       justify-content: space-around;
       align-items: center;
-      border-bottom: 1px solid #222;
       padding-bottom: 6px;
     }
-    .stat-box {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+    .stat-box { display: flex; flex-direction: column; align-items: center; }
     .stat-label {
       font-size: 0.65rem;
       text-transform: uppercase;
@@ -104,38 +96,16 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      transition: opacity 0.2s, border-color 0.2s, transform 0.1s;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
       cursor: pointer;
     }
     .tier-box:active { transform: scale(0.97); }
-
-    .tier-box.locked {
-      border-color: #444;
-      color: #666;
-      opacity: 0.55;
-    }
-    .tier-box.locked span { color: #666; }
-
-    .tier-box.completed-today {
-      border: 1px solid #fff;
-      color: #fff;
-      opacity: 1;
-    }
-    .tier-box.completed-today span {
-      color: #fff;
-      font-weight: normal;
-    }
-
-
+    .tier-box.locked { border-color: #444; color: #666; }
+    .tier-box.locked > span { color: #666; opacity: 0.6; }
+    .tier-box.completed-today { border-color: #fff; color: #fff; }
     .tier-box.selected-target {
-      border: 2px solid #fff;
-      box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
-      opacity: 1 !important;
-      color: #fff !important;
-    }
-    .tier-box.selected-target span {
-      color: #fff !important;
-      font-weight: 900 !important;
+      border: 2px solid #fff !important;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.95) !important;
     }
 
     .tier-label { font-size: 0.64rem; font-weight: 700; margin-bottom: 1px; }
@@ -152,11 +122,7 @@
       margin-top: 1px;
     }
 
-    #bonusInfo {
-      display: none;
-      width: 100%;
-      background: #000;
-      color: #fff;
+    #bonusInfo, #btnBuyStreak {
       border: 1px dashed #fff;
       border-radius: 8px;
       padding: 7px 10px;
@@ -165,38 +131,18 @@
       letter-spacing: 0.5px;
       text-transform: uppercase;
       margin-bottom: 6px;
-      line-height: normal;
-      box-sizing: border-box;
-      cursor: default;
-    } 
-
-    #buySection {
-      margin-bottom: 6px;
-      display: none;
     }
+    #bonusInfo { display: none; background: #000; }
+    #buySection { margin-bottom: 6px; display: none; }
     #btnBuyStreak {
       width: 100%;
       background: #000;
       color: #fff;
-      border: 1px dashed #fff;
-      border-radius: 8px;
-      padding: 7px 10px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.5px;
       cursor: pointer;
-      text-transform: uppercase;
       transition: background 0.2s, color 0.2s;
     }
-    #btnBuyStreak:hover:not(:disabled) {
-      background: #fff;
-      color: #000;
-    }
-    #btnBuyStreak:disabled {
-      border-color: #444;
-      color: #555;
-      cursor: not-allowed;
-    }
+    #btnBuyStreak:hover:not(:disabled) { background: #fff; color: #000; }
+    #btnBuyStreak:disabled { border-color: #444; color: #555; cursor: not-allowed; }
 
     .config-row {
       display: flex;
@@ -220,7 +166,6 @@
       border-radius: 6px;
       font-size: 0.85rem;
       outline: none;
-      appearance: none;
     }
     input[type="number"] {
       padding: 4px 2px;
@@ -229,7 +174,7 @@
       font-weight: bold;
     }
     select { padding: 4px 6px; max-width: 185px; font-weight: 600; }
-    input:disabled, select:disabled { border: 1px solid #fff; -webkit-text-fill-color: #fff; }
+    input:disabled, select:disabled { border-color: #fff; -webkit-text-fill-color: #fff; }
 
     .checkbox-label {
       display: flex;
@@ -241,7 +186,7 @@
     }
     .checkbox-label input { width: 15px; height: 15px; accent-color: #fff; cursor: pointer; }
 
-    button#actionBtn {
+    #actionBtn {
       background: #fff;
       color: #000;
       border: 1px solid #fff;
@@ -255,24 +200,12 @@
       line-height: 1.3;
       white-space: pre-line;
       margin-bottom: 6px;
-      transition: transform 0.1s ease;
       touch-action: manipulation;
-      appearance: none;
     }
-    button#actionBtn:active { transform: scale(0.98); }
-    button#actionBtn.stop {
-      background: #000;
-      color: #fff;
-    }
-    button#actionBtn.stop:active {
-      background: #fff;
-      color: #000;
-    }
-    button#actionBtn.presence {
-      background: #000;
-      color: #fff;
-      border: 1px solid #fff;
-    }
+    #actionBtn:active { transform: scale(0.98); }
+    #actionBtn.stop { background: #000; color: #fff; }
+    #actionBtn.stop:active { background: #fff; color: #000; }
+    #actionBtn.presence { background: #000; color: #fff; font-size: 1.4rem; }
 
     #stopwatch {
       font-family: "SF Mono", Monaco, Consolas, monospace;
@@ -281,7 +214,7 @@
       min-height: 22px;
       font-weight: 700;
     }
-    #stopwatch.hidden, #importFile { display: none; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -289,7 +222,7 @@
   <div class="backup-actions">
     <button class="btn-secondary" id="btnExport">Exporter</button>
     <button class="btn-secondary" id="btnImport">Importer</button>
-    <input type="file" id="importFile" accept=".json">
+    <input type="file" id="importFile" class="hidden" accept=".json">
   </div>
 
   <div class="unified-stats-card card">
@@ -379,22 +312,11 @@
       { id: "180m", label: "≥ 180m", minSec: 10800, rate: 0.75 }
     ];
 
-    let selectedTierId = null;
-
-    let running = false;
-    let presenceMode = null;
-    let countdownVal = 0;
-    let targetSeconds = 0;
-    let configuredMaxSeconds = 0;
-    let elapsedSeconds = 0;
-    let pauseOffsetMs = 0;
-    let pauseStartMs = 0;
-    let startTime = 0;
-    let masterInterval = null;
-    let presenceTimer = null;
-
-    let surpriseProbPerSec = 0;
-    let lastSurpriseEndSecond = -999;
+    let selectedTierId = null, running = false, presenceMode = null;
+    let targetSeconds = 0, configuredMaxSeconds = 0, elapsedSeconds = 0;
+    let pauseOffsetMs = 0, pauseStartMs = 0, startTime = 0;
+    let masterInterval = null, presenceTimer = null;
+    let surpriseProbPerSec = 0, lastSurpriseEndSecond = -999;
 
     const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE"); };
     document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
@@ -402,11 +324,8 @@
     window.addEventListener("blur", stopIfRunning);
 
     const recupererDateJour = () => new Date().toISOString().slice(0, 10);
-
-    function calculerEcartJours(d1, d2) {
-      if (!d1 || !d2) return 999;
-      return Math.round((new Date(d2) - new Date(d1)) / 864e5);
-    }
+    const calculerEcartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
+    const lireSecondesConfig = (mId, sId) => (parseInt($(mId).value, 10) || 0) * 60 + (parseInt($(sId).value, 10) || 0);
 
     function chargerDonneesStats() {
       const defaut = { lastActiveDate: null, dayStreak: 0, dayStreakRecord: 0, bankSeconds: 0, tiers: {} };
@@ -432,13 +351,17 @@
       }
     }
 
-    function enregistrerDonneesStats(data) {
+    const enregistrerDonneesStats = data => {
       try { localStorage.setItem('meditation_presence_stats', JSON.stringify(data)); } catch {}
+    };
+
+    function actualiserBoutonRecommencer() {
+      if (running) return;
+      reinitialiserBouton(`COMMENCER\n${formaterTemps(lireSecondesConfig('maxM', 'maxS'))}`);
     }
 
     function selectionnerPalier(id) {
       if (running) return;
-
       if (selectedTierId === id) {
         selectedTierId = null;
       } else {
@@ -451,22 +374,17 @@
         }
       }
       rafraichirAffichageStats();
+      actualiserBoutonRecommencer();
     }
 
     function actualiserPalierSelonMax() {
-      const maxSec = (parseInt($('maxM').value, 10) || 0) * 60 + (parseInt($('maxS').value, 10) || 0);
-      let palierCorrespondant = null;
+      const maxSec = lireSecondesConfig('maxM', 'maxS');
+      const match = [...DURATION_TIERS].reverse().find(t => maxSec >= t.minSec);
+      selectedTierId = match ? match.id : null;
 
-      for (let i = DURATION_TIERS.length - 1; i >= 0; i--) {
-        if (maxSec >= DURATION_TIERS[i].minSec) {
-          palierCorrespondant = DURATION_TIERS[i].id;
-          break;
-        }
-      }
-
-      selectedTierId = palierCorrespondant;
       sauvegarderParametres();
       rafraichirAffichageStats();
+      actualiserBoutonRecommencer();
     }
 
     function rafraichirAffichageStats() {
@@ -478,17 +396,14 @@
       $('statBank').textContent = formaterTempsCourt(data.bankSeconds || 0);
 
       const fragment = document.createDocumentFragment();
-
       DURATION_TIERS.forEach(t => {
         const tData = data.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
         const isDoneToday = tData.lastDate === today;
-        const isSelected = selectedTierId === t.id;
-
-        let statusClass = isDoneToday ? "completed-today" : "locked";
-        if (isSelected) statusClass += " selected-target";
+        let cls = isDoneToday ? "completed-today" : "locked";
+        if (selectedTierId === t.id) cls += " selected-target";
 
         const box = document.createElement('div');
-        box.className = `tier-box ${statusClass}`;
+        box.className = `tier-box ${cls}`;
         box.onclick = () => selectionnerPalier(t.id);
         box.innerHTML = `
           <span class="tier-label">${t.label}</span>
@@ -498,33 +413,23 @@
         `;
         fragment.appendChild(box);
       });
-
-      const container = $('tiersContainer');
-      container.replaceChildren(fragment);
+      $('tiersContainer').replaceChildren(fragment);
 
       const buySec = $('buySection');
-      const buyBtn = $('btnBuyStreak');
       const bonusInfo = $('bonusInfo');
-      const tierData = selectedTierId ? data.tiers[selectedTierId] : null;
-      const isSelectedDoneToday = tierData ? tierData.lastDate === today : false;
+      const tierObj = selectedTierId ? DURATION_TIERS.find(t => t.id === selectedTierId) : null;
+      const isSelectedDoneToday = tierObj && data.tiers[selectedTierId]?.lastDate === today;
 
-      // Affichage du ratio bonus si le palier sélectionné est déjà fait aujourd'hui
-      if (selectedTierId && !running && isSelectedDoneToday) {
-        const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
-        const secParMin = Math.round(60 * tierObj.rate);
-        bonusInfo.style.display = 'block';
+      bonusInfo.style.display = (tierObj && !running && isSelectedDoneToday) ? 'block' : 'none';
+      if (bonusInfo.style.display === 'block') {
         bonusInfo.textContent = `Palier ${tierObj.label} déjà validé`;
-      } else {
-        bonusInfo.style.display = 'none';
       }
 
-      // Bouton d'achat visible uniquement si le palier n'est pas encore fait aujourd'hui
-      if (selectedTierId && !running && !isSelectedDoneToday) {
-        const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
+      if (tierObj && !running && !isSelectedDoneToday) {
         const costSec = Math.round(tierObj.minSec * 1.5);
         buySec.style.display = 'block';
-        buyBtn.textContent = `Acheter streak ${tierObj.label} (${formaterTempsCourt(costSec)})`;
-        buyBtn.disabled = (data.bankSeconds || 0) < costSec;
+        $('btnBuyStreak').textContent = `Acheter streak ${tierObj.label} (${formaterTempsCourt(costSec)})`;
+        $('btnBuyStreak').disabled = (data.bankSeconds || 0) < costSec;
       } else {
         buySec.style.display = 'none';
       }
@@ -544,7 +449,6 @@
       }
 
       data.bankSeconds -= costSec;
-
       if (data.lastActiveDate !== today) {
         data.dayStreak = (calculerEcartJours(data.lastActiveDate, today) === 1) ? data.dayStreak + 1 : 1;
         data.lastActiveDate = today;
@@ -584,14 +488,9 @@
       reader.onload = e => {
         try {
           const data = JSON.parse(e.target.result);
-          if (data.stats) {
-            JSON.parse(data.stats);
-            localStorage.setItem('meditation_presence_stats', data.stats);
-          }
-          if (data.config) {
-            JSON.parse(data.config);
-            localStorage.setItem('meditation_presence_config', data.config);
-          }
+          if (data.stats) localStorage.setItem('meditation_presence_stats', typeof data.stats === 'string' ? data.stats : JSON.stringify(data.stats));
+          if (data.config) localStorage.setItem('meditation_presence_config', typeof data.config === 'string' ? data.config : JSON.stringify(data.config));
+
           chargerParametres();
           gererChangementDistribution();
           toggleChronoDisplay();
@@ -619,36 +518,19 @@
         }
         stats.dayStreakRecord = Math.max(stats.dayStreak, stats.dayStreakRecord || 0);
 
-        if (selectedTierId) {
-          const t = DURATION_TIERS.find(tier => tier.id === selectedTierId);
-          if (t && maxSecSession >= t.minSec) {
-            const tier = stats.tiers[t.id] = stats.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
-            if (tier.lastDate !== today) {
-              tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
-              tier.lastDate = today;
-              tier.record = Math.max(tier.streak, tier.record || 0);
-              estComptabilise = true;
-            }
-          }
-        } else {
-          for (let i = 0; i < DURATION_TIERS.length; i++) {
-            const t = DURATION_TIERS[i];
-            const tier = stats.tiers[t.id] = stats.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
-            if (tier.lastDate === today) continue;
-
-            if (maxSecSession >= t.minSec) {
-              tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
-              tier.lastDate = today;
-              tier.record = Math.max(tier.streak, tier.record || 0);
-              estComptabilise = true;
-            }
-            break;
+        const targetTier = selectedTierId ? DURATION_TIERS.find(t => t.id === selectedTierId) : DURATION_TIERS[0];
+        if (targetTier && maxSecSession >= targetTier.minSec) {
+          const tier = stats.tiers[targetTier.id] = stats.tiers[targetTier.id] || { streak: 0, record: 0, lastDate: null };
+          if (tier.lastDate !== today) {
+            tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
+            tier.lastDate = today;
+            tier.record = Math.max(tier.streak, tier.record || 0);
+            estComptabilise = true;
           }
         }
 
         if (!estComptabilise) {
-          const t = DURATION_TIERS.find(tier => tier.id === selectedTierId);
-          tauxApplique = t ? t.rate : 0.25;
+          tauxApplique = targetTier ? targetTier.rate : 0.25;
           gainBanque = Math.floor(dureeReelle * tauxApplique);
           stats.bankSeconds = (stats.bankSeconds || 0) + gainBanque;
         }
@@ -656,7 +538,7 @@
 
       enregistrerDonneesStats(stats);
       rafraichirAffichageStats();
-      return { estComptabilise, gainBanque, tauxApplique };
+      return { estComptabilise, gainBanque };
     }
 
     function sauvegarderParametres() {
@@ -685,7 +567,6 @@
       const isFixed = $('probDist').value === 'fixed';
       $('minM').disabled = $('minS').disabled = isFixed;
       $('rowMin').style.display = isFixed ? "none" : "flex";
-
       $('surpriseFreq').disabled = !isFixed;
       $('rowSurprise').style.display = isFixed ? "flex" : "none";
     }
@@ -695,17 +576,13 @@
     }
 
     function formaterTemps(totalSec) {
-      const m = Math.floor(totalSec / 60);
-      const s = totalSec % 60;
+      const m = Math.floor(totalSec / 60), s = totalSec % 60;
       return (m > 0 && s > 0) ? `${m}m ${s}s` : (m > 0 ? `${m}m` : `${s}s`);
     }
 
     function formaterTempsCourt(totalSec) {
-      const m = Math.floor(totalSec / 60);
-      const s = totalSec % 60;
-      if (m > 0 && s > 0) return `${m}m${s}s`;
-      if (m > 0) return `${m}m`;
-      return `${s}s`;
+      const m = Math.floor(totalSec / 60), s = totalSec % 60;
+      return (m > 0 && s > 0) ? `${m}m${s}s` : (m > 0 ? `${m}m` : `${s}s`);
     }
 
     function formaterChrono(sec) {
@@ -715,20 +592,15 @@
     function calculerTempsCible(minSec, maxSec, mode) {
       if (mode === 'fixed' || minSec >= maxSec) return maxSec;
       const u = Math.random();
-      const factors = {
-        linear: Math.sqrt(u),
-        uniform: u
-      };
-      return minSec + Math.floor((factors[mode] ?? u) * (maxSec - minSec + 1));
+      const mult = mode === 'linear' ? Math.sqrt(u) : u;
+      return minSec + Math.floor(mult * (maxSec - minSec + 1));
     }
 
     function toggleFormInputs(disabled) {
       ['maxM', 'maxS', 'showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
       if (disabled) {
-        $('minM').disabled = $('minS').disabled = true;
-        $('surpriseFreq').disabled = true;
-        $('buySection').style.display = 'none';
-        $('bonusInfo').style.display = 'none';
+        $('minM').disabled = $('minS').disabled = $('surpriseFreq').disabled = true;
+        $('buySection').style.display = $('bonusInfo').style.display = 'none';
       } else {
         gererChangementDistribution();
         rafraichirAffichageStats();
@@ -750,12 +622,9 @@
         presenceMode = null;
 
         const res = comptabiliserSession(true, configuredMaxSeconds, targetSeconds);
-        const statut = res.estComptabilise 
-          ? "COMPTABILISÉ" 
-          : (res.gainBanque > 0 ? `+${formaterTemps(res.gainBanque)} (×${res.tauxApplique})` : "NON COMPTABILISÉ");
-        const tempsFormate = formaterTemps(targetSeconds);
-
-        reinitialiserBouton(`GAGNÉ - ${statut} (${tempsFormate})\nRECOMMENCER`);
+        const tempsTenu = formaterTemps(targetSeconds);
+        const detail = res.estComptabilise ? "COMPTABILISÉ" : `${res.gainBanque > 0 ? formaterTemps(res.gainBanque) : "0s"} SOLDÉ`;
+        reinitialiserBouton(`GAGNÉ (${tempsTenu})\n${detail}\nRECOMMENCER`);
       } else if (running) {
         declarerEchec("ABANDON");
       } else {
@@ -766,8 +635,8 @@
     function demarrerSession() {
       sauvegarderParametres();
 
-      const minTotal = (parseInt($('minM').value, 10) || 0) * 60 + (parseInt($('minS').value, 10) || 0);
-      const maxTotal = (parseInt($('maxM').value, 10) || 0) * 60 + (parseInt($('maxS').value, 10) || 0);
+      const minTotal = lireSecondesConfig('minM', 'minS');
+      const maxTotal = lireSecondesConfig('maxM', 'maxS');
       const distMode = $('probDist').value;
 
       if (maxTotal <= 0) return alert("La durée maximum doit être supérieure à 0.");
@@ -775,7 +644,6 @@
 
       configuredMaxSeconds = maxTotal;
       targetSeconds = calculerTempsCible(minTotal, maxTotal, distMode);
-      
       surpriseProbPerSec = (distMode === 'fixed') ? (parseFloat($('surpriseFreq').value) || 0) : 0;
       
       elapsedSeconds = 0;
@@ -809,7 +677,7 @@
       if (elapsedSeconds >= targetSeconds) {
         clearInterval(masterInterval);
         running = false;
-        activerCompteARebours('final', 10, "TERMINER", "NON VALIDÉ");
+        activerCompteARebours('final', 10, "!", "NON VALIDÉ");
         return;
       }
 
@@ -819,29 +687,20 @@
 
         if (delaiEcoule && pasTropProcheFin && Math.random() < surpriseProbPerSec) {
           pauseStartMs = Date.now();
-          activerCompteARebours('mid', 10, "PRÉSENT", "CONTRÔLE MANQUÉ");
+          activerCompteARebours('mid', 10, "?", "CONTRÔLE MANQUÉ");
         }
       }
     }
 
-    function activerCompteARebours(mode, seconds, labelPrefix, failReason) {
+    function activerCompteARebours(mode, seconds, symbol, failReason) {
       clearTimeout(presenceTimer);
       presenceMode = mode;
-      countdownVal = seconds;
-
-      const step = () => {
-        if (presenceMode !== mode) return;
-        const btn = $('actionBtn');
-        if (countdownVal > 0) {
-          btn.textContent = `${labelPrefix} (${countdownVal}s)`;
-          btn.className = "presence";
-          countdownVal--;
-          presenceTimer = setTimeout(step, 1000);
-        } else {
-          declarerEchec(failReason);
-        }
-      };
-      step();
+      const btn = $('actionBtn');
+      btn.textContent = symbol;
+      btn.className = "presence";
+      presenceTimer = setTimeout(() => {
+        if (presenceMode === mode) declarerEchec(failReason);
+      }, seconds * 1000);
     }
 
     function declarerEchec(raison = "NON VALIDÉ") {
@@ -869,11 +728,8 @@
     $('actionBtn').addEventListener('click', handleClick);
     $('btnBuyStreak').addEventListener('click', acheterStreak);
 
-    $('minM').addEventListener('input', sauvegarderParametres);
-    $('minS').addEventListener('input', sauvegarderParametres);
-
-    $('maxM').addEventListener('input', actualiserPalierSelonMax);
-    $('maxS').addEventListener('input', actualiserPalierSelonMax);
+    ['minM', 'minS'].forEach(id => $(id).addEventListener('input', sauvegarderParametres));
+    ['maxM', 'maxS'].forEach(id => $(id).addEventListener('input', actualiserPalierSelonMax));
 
     $('surpriseFreq').addEventListener('change', sauvegarderParametres);
     $('probDist').addEventListener('change', () => {
