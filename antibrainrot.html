@@ -92,11 +92,11 @@
     }
     .tier-box {
       width: 100%;
-      height: 58px;
+      height: 68px;
       background: #000;
       border: 1px solid #666;
       border-radius: 6px;
-      padding: 0;
+      padding: 2px 0;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -126,6 +126,12 @@
     .tier-mult {
       font-size: 0.55rem;
       font-family: "SF Mono", Monaco, Consolas, monospace;
+    }
+    
+    .tier-sac {
+      font-size: 0.52rem;
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+      color: inherit;
     }
 
     .tier-box.locked {
@@ -371,7 +377,7 @@
 
   <div id="rewardChoiceSection">
     <button class="btn-reward" id="btnChooseStreak">VALIDER LA SÉRIE</button>
-    <button class="btn-reward" id="btnChooseBank">SOLDE EN BANQUE (TAUX ÷ 2)</button>
+    <button class="btn-reward" id="btnChooseBank">SOLDE EN BANQUE</button>
   </div>
 
   <button id="actionBtn">COMMENCER</button>
@@ -381,23 +387,23 @@
     const $ = id => document.getElementById(id);
 
     const DURATION_TIERS = [
-      { id: "1m", label: "≥ 1m", minSec: 60, rate: 0.10 },
-      { id: "5m", label: "≥ 5m", minSec: 300, rate: 0.15 },
-      { id: "10m", label: "≥ 10m", minSec: 600, rate: 0.20 },
-      { id: "15m", label: "≥ 15m", minSec: 900, rate: 0.25 },
-      { id: "30m", label: "≥ 30m", minSec: 1800, rate: 0.30 },
-      { id: "45m", label: "≥ 45m", minSec: 2700, rate: 0.35 },
-      { id: "1h", label: "≥ 1h", minSec: 3600, rate: 0.40 },
-      { id: "1h30", label: "≥ 1h30", minSec: 5400, rate: 0.45 },
-      { id: "2h", label: "≥ 2h", minSec: 7200, rate: 0.50 },
-      { id: "2h30", label: "≥ 2h30", minSec: 9000, rate: 0.55 },
-      { id: "3h", label: "≥ 3h", minSec: 10800, rate: 0.60 },
-      { id: "3h30", label: "≥ 3h30", minSec: 12600, rate: 0.65 },
-      { id: "4h", label: "≥ 4h", minSec: 14400, rate: 0.70 },
-      { id: "4h30", label: "≥ 4h30", minSec: 16200, rate: 0.75 },
-      { id: "5h", label: "≥ 5h", minSec: 18000, rate: 0.80 },
-      { id: "5h30", label: "≥ 5h30", minSec: 19800, rate: 0.85 },
-      { id: "6h", label: "≥ 6h", minSec: 21600, rate: 0.90 }
+      { id: "1m",   label: "≥ 1m",   minSec: 60,    rateFull: 0.15, rateSacrifice: 0.12, buyMult: 2.5 },
+      { id: "5m",   label: "≥ 5m",   minSec: 300,   rateFull: 0.20, rateSacrifice: 0.15, buyMult: 2.2 },
+      { id: "10m",  label: "≥ 10m",  minSec: 600,   rateFull: 0.25, rateSacrifice: 0.18, buyMult: 2.0 },
+      { id: "15m",  label: "≥ 15m",  minSec: 900,   rateFull: 0.30, rateSacrifice: 0.22, buyMult: 1.8 },
+      { id: "30m",  label: "≥ 30m",  minSec: 1800,  rateFull: 0.35, rateSacrifice: 0.18, buyMult: 1.5 },
+      { id: "45m",  label: "≥ 45m",  minSec: 2700,  rateFull: 0.40, rateSacrifice: 0.20, buyMult: 1.4 },
+      { id: "1h",   label: "≥ 1h",   minSec: 3600,  rateFull: 0.45, rateSacrifice: 0.22, buyMult: 1.3 },
+      { id: "1h30", label: "≥ 1h30", minSec: 5400,  rateFull: 0.50, rateSacrifice: 0.25, buyMult: 1.25 },
+      { id: "2h",   label: "≥ 2h",   minSec: 7200,  rateFull: 0.55, rateSacrifice: 0.24, buyMult: 1.2 },
+      { id: "2h30", label: "≥ 2h30", minSec: 9000,  rateFull: 0.58, rateSacrifice: 0.24, buyMult: 1.15 },
+      { id: "3h",   label: "≥ 3h",   minSec: 10800, rateFull: 0.60, rateSacrifice: 0.24, buyMult: 1.15 },
+      { id: "3h30", label: "≥ 3h30", minSec: 12600, rateFull: 0.62, rateSacrifice: 0.25, buyMult: 1.1 },
+      { id: "4h",   label: "≥ 4h",   minSec: 14400, rateFull: 0.64, rateSacrifice: 0.25, buyMult: 1.1 },
+      { id: "4h30", label: "≥ 4h30", minSec: 16200, rateFull: 0.65, rateSacrifice: 0.25, buyMult: 1.1 },
+      { id: "5h",   label: "≥ 5h",   minSec: 18000, rateFull: 0.66, rateSacrifice: 0.26, buyMult: 1.1 },
+      { id: "5h30", label: "≥ 5h30", minSec: 19800, rateFull: 0.67, rateSacrifice: 0.26, buyMult: 1.1 },
+      { id: "6h",   label: "≥ 6h",   minSec: 21600, rateFull: 0.68, rateSacrifice: 0.26, buyMult: 1.1 }
     ];
 
     let selectedTierId = null, running = false, presenceMode = null;
@@ -502,7 +508,8 @@
           <span class="tier-label">${t.label}</span>
           <span class="tier-val">${tData.streak}j</span>
           <span class="tier-rec">r:${tData.record}</span>
-          <span class="tier-mult">×${t.rate}</span>
+          <span class="tier-mult">×${t.rateFull}</span>
+          <span class="tier-sac">s:×${t.rateSacrifice}</span>
         `;
         fragment.appendChild(box);
       });
@@ -519,7 +526,7 @@
       }
 
       if (tierObj && !running && !pendingVictory && !isSelectedDoneToday) {
-        const costSec = Math.round(tierObj.minSec * 1.5);
+        const costSec = Math.round(tierObj.minSec * (tierObj.buyMult || 1.2));
         buySec.style.display = 'block';
         $('btnBuyStreak').textContent = `Acheter streak ${tierObj.label} (${formaterTempsCourt(costSec)})`;
         $('btnBuyStreak').disabled = (data.bankSeconds || 0) < costSec;
@@ -535,7 +542,7 @@
       const tierObj = DURATION_TIERS.find(t => t.id === selectedTierId);
       if (!tierObj) return;
 
-      const costSec = Math.round(tierObj.minSec * 1.5);
+      const costSec = Math.round(tierObj.minSec * (tierObj.buyMult || 1.2));
       if ((data.bankSeconds || 0) < costSec) {
         alert("Solde de temps insuffisant pour acheter ce streak.");
         return;
@@ -560,7 +567,7 @@
 
     function exporterSauvegarde() {
       const exportData = {
-        version: 7,
+        version: 8,
         dateExport: new Date().toISOString(),
         config: localStorage.getItem('meditation_presence_config'),
         stats: localStorage.getItem('meditation_presence_stats')
@@ -620,13 +627,13 @@
         }
         texteResultat = "STREAK COMPTABILISÉ";
       } else if (choix === 'bank_half') {
-        const rateHalf = targetTier ? (targetTier.rate / 2) : 0.125;
-        gainBanque = Math.floor(dureeReelle * rateHalf);
+        const rate = targetTier ? targetTier.rateSacrifice : 0.15;
+        gainBanque = Math.floor(dureeReelle * rate);
         stats.bankSeconds = (stats.bankSeconds || 0) + gainBanque;
-        texteResultat = `+${formaterTemps(gainBanque)} (TAUX ÷2)`;
+        texteResultat = `+${formaterTemps(gainBanque)} (SACRIFICE)`;
       } else if (choix === 'bank_full') {
-        const fullRate = targetTier ? targetTier.rate : 0.25;
-        gainBanque = Math.floor(dureeReelle * fullRate);
+        const rate = targetTier ? targetTier.rateFull : 0.25;
+        gainBanque = Math.floor(dureeReelle * rate);
         stats.bankSeconds = (stats.bankSeconds || 0) + gainBanque;
         texteResultat = `+${formaterTemps(gainBanque)} SOLDÉ`;
       }
@@ -746,24 +753,22 @@
         const alreadyDoneToday = canValidateTier && stats.tiers[targetTier.id]?.lastDate === today;
 
         if (canValidateTier && !alreadyDoneToday) {
-          // Offrir le choix : Streak OU Solde (taux divisé par 2)
           pendingVictory = {
             maxSecSession: configuredMaxSeconds,
             dureeReelle: targetSeconds,
             targetTier: targetTier
           };
 
-          const rateHalf = (targetTier.rate / 2);
-          const gainPotentiel = Math.floor(targetSeconds * rateHalf);
+          const rateSacrifice = targetTier ? targetTier.rateSacrifice : 0.15;
+          const gainPotentiel = Math.floor(targetSeconds * rateSacrifice);
 
           $('btnChooseStreak').textContent = `VALIDER SÉRIE ${targetTier.label}`;
-          $('btnChooseBank').textContent = `SOLDE TEMPS : +${formaterTemps(gainPotentiel)} (×${rateHalf.toFixed(3).replace(/\.?0+$/, '')})`;
+          $('btnChooseBank').textContent = `SOLDE TEMPS : +${formaterTemps(gainPotentiel)} (×${rateSacrifice})`;
 
           $('actionBtn').style.display = 'none';
           $('rewardChoiceSection').style.display = 'flex';
           toggleFormInputs(true);
         } else {
-          // Si palier déjà validé aujourd'hui ou pas de palier cible : encaissement direct au taux plein
           pendingVictory = {
             maxSecSession: configuredMaxSeconds,
             dureeReelle: targetSeconds,
