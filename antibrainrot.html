@@ -41,7 +41,7 @@
       border: 1px solid #fff;
       color: #fff;
       font-size: 0.68rem;
-      padding: 4px 10px;
+      padding: 5px 10px;
       border-radius: 6px;
       cursor: pointer;
       font-weight: 600;
@@ -83,67 +83,95 @@
     }
     .stat-sub { font-size: 0.68rem; margin-top: 1px; }
 
+    /* Grille et paliers */
     .tiers-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 4px;
+      width: 100%;
     }
     .tier-box {
+      width: 100%;
+      height: 58px;
       background: #000;
-      border: 1px solid #fff;
+      border: 1px solid #666;
       border-radius: 6px;
-      padding: 4px 2px;
+      padding: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+      justify-content: center;
       cursor: pointer;
+      color: #666;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
     }
     .tier-box:active { transform: scale(0.97); }
-    .tier-box.locked { border-color: #444; color: #666; }
-    .tier-box.locked > span { color: #666; opacity: 0.6; }
-    .tier-box.completed-today { border-color: #fff; color: #fff; }
-    .tier-box.selected-target {
-      border: 2px solid #fff !important;
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.95) !important;
-    }
 
-    .tier-label { font-size: 0.64rem; font-weight: 700; margin-bottom: 1px; }
+    .tier-box span {
+      display: block;
+      width: 100%;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.15;
+      color: inherit;
+    }
+    .tier-label { font-size: 0.62rem; font-weight: 700; }
     .tier-val {
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 700;
       font-family: "SF Mono", Monaco, Consolas, monospace;
     }
-    .tier-rec { font-size: 0.58rem; margin-top: 1px; }
+    .tier-rec { font-size: 0.58rem; }
     .tier-mult {
       font-size: 0.55rem;
       font-family: "SF Mono", Monaco, Consolas, monospace;
-      color: #aaa;
-      margin-top: 1px;
     }
 
+    .tier-box.locked {
+      border-color: #666;
+      color: #666;
+    }
+    .tier-box.completed-today {
+      border-color: #fff;
+      color: #fff;
+    }
+    .tier-box.selected-target {
+      outline: 2px solid #fff;
+      outline-offset: -2px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.95);
+    }
+
+    /* Actions secondaires sous stats */
     #bonusInfo, #btnBuyStreak {
+      width: 100%;
+      height: 34px;
+      margin: 0 0 6px 0;
+      padding: 0 10px;
       border: 1px dashed #fff;
       border-radius: 8px;
-      padding: 7px 10px;
+      background: #000;
+      color: #fff;
+      font-family: inherit;
       font-size: 0.75rem;
       font-weight: 700;
       letter-spacing: 0.5px;
       text-transform: uppercase;
-      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
     }
-    #bonusInfo { display: none; background: #000; }
-    #buySection { margin-bottom: 6px; display: none; }
+    #bonusInfo { display: none; cursor: default; }
+    #buySection { width: 100%; margin: 0; display: none; }
     #btnBuyStreak {
-      width: 100%;
-      background: #000;
-      color: #fff;
       cursor: pointer;
       transition: background 0.2s, color 0.2s;
     }
     #btnBuyStreak:hover:not(:disabled) { background: #fff; color: #000; }
     #btnBuyStreak:disabled { border-color: #444; color: #555; cursor: not-allowed; }
 
+    /* Configuration */
     .config-row {
       display: flex;
       align-items: center;
@@ -186,6 +214,7 @@
     }
     .checkbox-label input { width: 15px; height: 15px; accent-color: #fff; cursor: pointer; }
 
+    /* Bouton principal */
     #actionBtn {
       background: #fff;
       color: #000;
@@ -420,8 +449,8 @@
       const tierObj = selectedTierId ? DURATION_TIERS.find(t => t.id === selectedTierId) : null;
       const isSelectedDoneToday = tierObj && data.tiers[selectedTierId]?.lastDate === today;
 
-      bonusInfo.style.display = (tierObj && !running && isSelectedDoneToday) ? 'block' : 'none';
-      if (bonusInfo.style.display === 'block') {
+      bonusInfo.style.display = (tierObj && !running && isSelectedDoneToday) ? 'flex' : 'none';
+      if (bonusInfo.style.display === 'flex') {
         bonusInfo.textContent = `Palier ${tierObj.label} déjà validé`;
       }
 
@@ -509,7 +538,6 @@
       const today = recupererDateJour();
       let estComptabilise = false;
       let gainBanque = 0;
-      let tauxApplique = 0.25;
 
       if (estVictoire) {
         if (stats.lastActiveDate !== today) {
@@ -530,7 +558,7 @@
         }
 
         if (!estComptabilise) {
-          tauxApplique = targetTier ? targetTier.rate : 0.25;
+          const tauxApplique = targetTier ? targetTier.rate : 0.25;
           gainBanque = Math.floor(dureeReelle * tauxApplique);
           stats.bankSeconds = (stats.bankSeconds || 0) + gainBanque;
         }
