@@ -97,16 +97,42 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      transition: opacity 0.2s, border-color 0.2s;
+      transition: opacity 0.2s, border-color 0.2s, transform 0.1s;
     }
+
+    /* Non validé : gris et sélectionnable */
     .tier-box.locked {
-      border-color: #333;
-      color: #555;
-      opacity: 0.4;
+      border-color: #444;
+      color: #666;
+      opacity: 0.55;
+      cursor: pointer;
     }
-    .tier-box.locked span { color: #555; }
-    .tier-box.next-target { box-shadow: 0 0 4px rgba(255, 255, 255, 0.35); }
-    .tier-box.completed-today { border-color: #888; }
+    .tier-box.locked span { color: #666; }
+    .tier-box.locked:active { transform: scale(0.97); }
+
+    /* Déjà validé aujourd'hui : blanc et non sélectionnable */
+    .tier-box.completed-today {
+      border-color: #fff;
+      color: #fff;
+      opacity: 1;
+      cursor: default;
+    }
+    .tier-box.completed-today span { color: #fff; }
+
+    /* Palier cible sélectionné : gras et surbrillance */
+    .tier-box.selected-target {
+      border: 2px solid #fff;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+      opacity: 1;
+      color: #fff;
+      cursor: pointer;
+    }
+    .tier-box.selected-target span {
+      color: #fff;
+      font-weight: 900 !important;
+    }
+    .tier-box.selected-target:active { transform: scale(0.97); }
+
     .tier-label { font-size: 0.64rem; font-weight: 700; margin-bottom: 1px; }
     .tier-val {
       font-size: 0.78rem;
@@ -283,6 +309,8 @@
       { id: "180m", label: "≥ 180m", minSec: 10800 }
     ];
 
+    let selectedTierId = null;
+
     let running = false;
     let presenceMode = null; // 'mid' | 'final' | null
     let countdownVal = 0;
@@ -338,31 +366,38 @@
       try { localStorage.setItem('meditation_presence_stats', JSON.stringify(data)); } catch {}
     }
 
+    function selectionnerPalier(id, isDoneToday) {
+      if (running || isDoneToday) return;
+      selectedTierId = (selectedTierId === id) ? null : id;
+      rafraichirAffichageStats();
+    }
+
     function rafraichirAffichageStats() {
       const data = chargerDonneesStats();
       const today = recupererDateJour();
+
+      if (selectedTierId && data.tiers[selectedTierId]?.lastDate === today) {
+        selectedTierId = null;
+      }
 
       $('statDayStreak').textContent = `${data.dayStreak} j`;
       $('statDayStreakRecord').textContent = `Record : ${data.dayStreakRecord || 0} j`;
 
       const fragment = document.createDocumentFragment();
-      let foundNextTarget = false;
 
-      DURATION_TIERS.forEach((t, i) => {
+      DURATION_TIERS.forEach(t => {
         const tData = data.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
         const isDoneToday = tData.lastDate === today;
-        const prevDone = i === 0 || data.tiers[DURATION_TIERS[i - 1].id]?.lastDate === today;
+        const isSelected = selectedTierId === t.id;
 
-        let statusClass = "locked";
-        if (isDoneToday) {
-          statusClass = "completed-today";
-        } else if (prevDone && !foundNextTarget) {
-          statusClass = "next-target";
-          foundNextTarget = true;
+        let statusClass = isDoneToday ? "completed-today" : "locked";
+        if (isSelected) {
+          statusClass += " selected-target";
         }
 
         const box = document.createElement('div');
         box.className = `tier-box ${statusClass}`;
+        box.onclick = () => selectionnerPalier(t.id, isDoneToday);
         box.innerHTML = `
           <span class="tier-label">${t.label}</span>
           <span class="tier-val">${tData.streak}j</span>
@@ -422,6 +457,7 @@
     function comptabiliserSession(estVictoire, maxSecSession) {
       const stats = chargerDonneesStats();
       const today = recupererDateJour();
+      let estComptabilise = false;
 
       if (estVictoire) {
         if (stats.lastActiveDate !== today) {
@@ -430,24 +466,38 @@
         }
         stats.dayStreakRecord = Math.max(stats.dayStreak, stats.dayStreakRecord || 0);
 
-        for (let i = 0; i < DURATION_TIERS.length; i++) {
-          const t = DURATION_TIERS[i];
-          const tier = stats.tiers[t.id] = stats.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
-
-          if (tier.lastDate === today) continue;
-          if (i > 0 && stats.tiers[DURATION_TIERS[i - 1].id].lastDate !== today) break;
-
-          if (maxSecSession >= t.minSec) {
-            tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
-            tier.lastDate = today;
-            tier.record = Math.max(tier.streak, tier.record || 0);
+        if (selectedTierId) {
+          const t = DURATION_TIERS.find(tier => tier.id === selectedTierId);
+          if (t && maxSecSession >= t.minSec) {
+            const tier = stats.tiers[t.id] = stats.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
+            if (tier.lastDate !== today) {
+              tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
+              tier.lastDate = today;
+              tier.record = Math.max(tier.streak, tier.record || 0);
+              estComptabilise = true;
+              selectedTierId = null;
+            }
           }
-          break;
+        } else {
+          for (let i = 0; i < DURATION_TIERS.length; i++) {
+            const t = DURATION_TIERS[i];
+            const tier = stats.tiers[t.id] = stats.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
+            if (tier.lastDate === today) continue;
+
+            if (maxSecSession >= t.minSec) {
+              tier.streak = (calculerEcartJours(tier.lastDate, today) === 1) ? tier.streak + 1 : 1;
+              tier.lastDate = today;
+              tier.record = Math.max(tier.streak, tier.record || 0);
+              estComptabilise = true;
+            }
+            break;
+          }
         }
       }
 
       enregistrerDonneesStats(stats);
       rafraichirAffichageStats();
+      return estComptabilise;
     }
 
     function sauvegarderParametres() {
@@ -475,11 +525,9 @@
     function gererChangementDistribution() {
       const isFixed = $('probDist').value === 'fixed';
       
-      // En mode fixe : pas de minimum
       $('minM').disabled = $('minS').disabled = isFixed;
       $('rowMin').style.display = isFixed ? "none" : "flex";
 
-      // Contrôles surprises autorisés UNIQUEMENT en mode fixe
       $('surpriseFreq').disabled = !isFixed;
       $('rowSurprise').style.display = isFixed ? "flex" : "none";
     }
@@ -531,8 +579,12 @@
       } else if (presenceMode === 'final') {
         clearTimeout(presenceTimer);
         presenceMode = null;
-        comptabiliserSession(true, configuredMaxSeconds);
-        reinitialiserBouton(`GAGNÉ (${formaterTemps(targetSeconds)})\nRECOMMENCER`);
+
+        const estComptabilise = comptabiliserSession(true, configuredMaxSeconds);
+        const statut = estComptabilise ? "COMPTABILISÉ" : "NON COMPTABILISÉ";
+        const tempsFormate = formaterTemps(targetSeconds);
+
+        reinitialiserBouton(`GAGNÉ - ${statut} (${tempsFormate})\nRECOMMENCER`);
       } else if (running) {
         declarerEchec("ABANDON");
       } else {
@@ -553,7 +605,6 @@
       configuredMaxSeconds = maxTotal;
       targetSeconds = calculerTempsCible(minTotal, maxTotal, distMode);
       
-      // Les surprises ne s'activent qu'en mode durée fixe
       surpriseProbPerSec = (distMode === 'fixed') ? (parseFloat($('surpriseFreq').value) || 0) : 0;
       
       elapsedSeconds = 0;
