@@ -1,37 +1,4 @@
-// --- CONFIGURATION SUPABASE ---
-const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || "https://esfnsfjmbfmlqihnhzyu.supabase.co";
-const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || "sb_publishable_xhIks927TYl0cvBmlDqQkQ_5wkEbmZv";
-
-const supabaseClient = (window.supabase && SUPABASE_URL !== "VOTRE_SUPABASE_URL_ICI")
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
-
-let currentUser = null;
-let authMode = "login"; // "login", "register", "edit_username", "edit_password"
-let isCloudSynced = false;
-
 const $ = id => document.getElementById(id);
-
-// --- INDICATEUR D'ÉTAT DE SYNCHRONISATION ---
-function majIndicateurSync(etat, message) {
-  const el = $('cloudSyncStatus');
-  if (!el) return;
-  switch (etat) {
-    case 'saving':
-      el.textContent = "ENREGISTREMENT CLOUD...";
-      break;
-    case 'synced':
-      el.textContent = `SYNCHRONISÉ (${message || new Date().toLocaleTimeString()})`;
-      break;
-    case 'error':
-      el.textContent = `HORS LIGNE`;
-      break;
-    case 'offline':
-    default:
-      el.textContent = "MODE LOCAL (NON CONNECTÉ)";
-      break;
-  }
-}
 
 const DURATION_TIERS = [
   { id: "1m",   label: "≥ 1m",   minSec: 60,    rateFull: 0.15, rateSacrifice: 0.12, buyMult: 2.5 },
@@ -116,38 +83,15 @@ function chargerDonneesStats() {
   }
 }
 
-async function sauvegarderVersSupabase(payload) {
-  if (!supabaseClient || !currentUser || !isCloudSynced) return;
-  majIndicateurSync('saving');
-
+function enregistrerDonneesStats(data) {
   try {
-    const dataToSave = {
-      updated_at: new Date().toISOString(),
-      ...payload
-    };
-
-    const { error } = await supabaseClient
-      .from('user_progress')
-      .update(dataToSave)
-      .eq('id', currentUser.id);
-
-    if (error) throw error;
-    majIndicateurSync('synced');
+    localStorage.setItem('meditation_presence_stats', JSON.stringify(data));
   } catch (err) {
-    console.error("Erreur écriture cloud:", err);
-    majIndicateurSync('error', err.message || "Réseau");
+    console.error("Erreur d'écriture dans localStorage:", err);
   }
 }
 
-async function enregistrerDonneesStats(data) {
-  try {
-    localStorage.setItem('meditation_presence_stats', JSON.stringify(data));
-  } catch {}
-
-  await sauvegarderVersSupabase({ stats: data });
-}
-
-async function sauvegarderParametres() {
+function sauvegarderParametres() {
   const conf = {
     selectedTierId,
     surpriseFreq: $('surpriseFreq').value,
@@ -156,9 +100,9 @@ async function sauvegarderParametres() {
 
   try {
     localStorage.setItem('meditation_presence_config', JSON.stringify(conf));
-  } catch {}
-
-  await sauvegarderVersSupabase({ config: conf });
+  } catch (err) {
+    console.error("Erreur d'enregistrement config:", err);
+  }
 }
 
 function appliquerParametres(config) {
@@ -178,332 +122,75 @@ function chargerParametres() {
   } catch {}
 }
 
-async function synchroniserDepuisCloud() {
-  if (!supabaseClient || !currentUser) {
-    majIndicateurSync('offline');
-    return;
-  }
+// --- SYSTÈME D'IMPORT / EXPORT JSON ---
 
-  majIndicateurSync('saving');
-
-  try {
-    const { data, error } = await supabaseClient
-      .from('user_progress')
-      .select('stats, config')
-      .eq('id', currentUser.id)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    if (data && data.stats && Object.keys(data.stats).length > 0) {
-      const stats = parserEtValiderStats(data.stats);
-      localStorage.setItem('meditation_presence_stats', JSON.stringify(stats));
-
-      const config = data.config || initialiserStructureConfig();
-      localStorage.setItem('meditation_presence_config', JSON.stringify(config));
-      appliquerParametres(config);
-    } else {
-      const statsVierges = initialiserStructureStats();
-      const configDefaut = initialiserStructureConfig();
-
-      localStorage.setItem('meditation_presence_stats', JSON.stringify(statsVierges));
-      localStorage.setItem('meditation_presence_config', JSON.stringify(configDefaut));
-      appliquerParametres(configDefaut);
-
-      await supabaseClient
-        .from('user_progress')
-        .update({
-          stats: statsVierges,
-          config: configDefaut,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', currentUser.id);
+function exporterDonneesJSON() {
+  const donnees = {
+    version: 1,
+    dateExport: new Date().toISOString(),
+    stats: chargerDonneesStats(),
+    config: {
+      selectedTierId,
+      surpriseFreq: $('surpriseFreq').value,
+      probDist: $('probDist').value
     }
+  };
 
-    isCloudSynced = true;
-    majIndicateurSync('synced', 'À jour');
-    gererChangementDistribution();
-    rafraichirAffichageStats();
-    actualiserBoutonRecommencer();
-  } catch (err) {
-    console.error("Erreur chargement cloud:", err);
-    majIndicateurSync('error', err.message || "Impossible de charger");
-  }
+  const blob = new Blob([JSON.stringify(donnees, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const lien = document.createElement("a");
+  lien.href = url;
+  lien.download = `anti-brainrotting-backup-${dateJour()}.json`;
+  document.body.appendChild(lien);
+  lien.click();
+  document.body.removeChild(lien);
+  URL.revokeObjectURL(url);
 }
 
-// --- MODALE & AUTHENTIFICATION ---
-
-function fermerModal() {
-  if ($('authModal')) $('authModal').classList.add('hidden');
-}
-
-function ouvrirModal(mode) {
-  authMode = mode;
-  const isRegister = mode === "register";
-  const isEditUser = mode === "edit_username";
-  const isEditPass = mode === "edit_password";
-
-  const emailInput = $('modalEmail');
-  const userInput = $('modalUsername');
-  const passInput = $('modalPassword');
-
-  if ($('modalTitle')) {
-    if (isRegister) $('modalTitle').textContent = "Créer un compte";
-    else if (isEditUser) $('modalTitle').textContent = "Modifier le pseudo";
-    else if (isEditPass) $('modalTitle').textContent = "Modifier le mot de passe";
-    else $('modalTitle').textContent = "Connexion";
-  }
-
-  // Affichage dynamique des champs selon l'action
-  if (emailInput) {
-    emailInput.value = "";
-    emailInput.placeholder = "Adresse e-mail";
-    emailInput.classList.toggle('hidden', isEditUser || isEditPass);
-  }
-
-  if (userInput) {
-    userInput.value = isEditUser ? (currentUser?.username || "") : "";
-    userInput.classList.toggle('hidden', mode === "login" || isEditPass);
-    userInput.placeholder = "Pseudo d'affichage";
-  }
-
-  if (passInput) {
-    passInput.value = "";
-    passInput.classList.toggle('hidden', isEditUser);
-    passInput.placeholder = isEditPass ? "Nouveau mot de passe" : "Mot de passe";
-  }
-
-  if ($('authModal')) {
-    $('authModal').classList.remove('hidden');
-    if (isEditUser && userInput) userInput.focus();
-    else if (isEditPass && passInput) passInput.focus();
-    else if (emailInput && !emailInput.classList.contains('hidden')) emailInput.focus();
-  }
-}
-
-async function soumettreAuthentification() {
-  if (!supabaseClient) return alert("Supabase non connecté.");
-
-  const isRegister = authMode === "register";
-  const isEditUser = authMode === "edit_username";
-  const isEditPass = authMode === "edit_password";
-
-  const email = $('modalEmail') ? $('modalEmail').value.trim().toLowerCase() : "";
-  const username = $('modalUsername') ? $('modalUsername').value.trim() : "";
-  const password = $('modalPassword') ? $('modalPassword').value : "";
-
-  majIndicateurSync('saving');
-
-  // --- 1. MODIFICATION DU PSEUDO ---
-  if (isEditUser) {
-    if (!currentUser) return;
-    if (username.length < 2 || username.length > 25) {
-      majIndicateurSync('synced');
-      return alert("Le pseudo doit contenir entre 2 et 25 caractères.");
-    }
-
-    // Mise à jour de la table profiles
-    const { error: profileError } = await supabaseClient
-      .from('profiles')
-      .update({ username: username })
-      .eq('id', currentUser.id);
-
-    if (profileError) {
-      majIndicateurSync('error', profileError.message);
-      return alert("Erreur lors de la modification du pseudo : " + profileError.message);
-    }
-
-    // Mise à jour des métadonnées auth
-    await supabaseClient.auth.updateUser({
-      data: { username: username }
-    });
-
-    currentUser.username = username;
-    gererEtatSession();
-    fermerModal();
-    majIndicateurSync('synced', 'Pseudo mis à jour');
-    alert("Pseudo modifié avec succès !");
-    return;
-  }
-
-  // --- 2. MODIFICATION DU MOT DE PASSE ---
-  if (isEditPass) {
-    if (!currentUser) return;
-    if (password.length < 6) {
-      majIndicateurSync('synced');
-      return alert("Le nouveau mot de passe doit comporter au moins 6 caractères.");
-    }
-
-    const { error: passError } = await supabaseClient.auth.updateUser({
-      password: password
-    });
-
-    if (passError) {
-      majIndicateurSync('error', passError.message);
-      return alert("Erreur lors de la modification du mot de passe : " + passError.message);
-    }
-
-    fermerModal();
-    majIndicateurSync('synced', 'Mot de passe mis à jour');
-    alert("Mot de passe modifié avec succès !");
-    return;
-  }
-
-  // --- 3. INSCRIPTION & CONNEXION ---
-  if (password.length < 6) {
-    return alert("Le mot de passe doit comporter au moins 6 caractères (requis par Supabase).");
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!email || !emailRegex.test(email)) {
-    return alert("Veuillez renseigner une adresse e-mail valide.");
-  }
-
-  if (isRegister) {
-    if (username.length < 2 || username.length > 25) {
-      majIndicateurSync('offline');
-      return alert("Le pseudo doit contenir entre 2 et 25 caractères.");
-    }
-
-    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { username }
-      }
-    });
-
-    if (authError) {
-      majIndicateurSync('error', authError.message);
-      return alert("Erreur création : " + authError.message);
-    }
-
-    const user = authData.user;
-    if (!user) {
-      majIndicateurSync('offline');
-      return alert("Vérifiez vos e-mails pour confirmer l'inscription.");
-    }
-
-    currentUser = { id: user.id, username };
-    gererEtatSession();
-    fermerModal();
-    await synchroniserDepuisCloud();
-
-  } else {
-    const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (authError || !authData.user) {
-      majIndicateurSync('offline');
-      return alert("Adresse e-mail ou mot de passe incorrect.");
-    }
-
-    const user = authData.user;
-
-    let pseudo = user.user_metadata?.username;
-    if (!pseudo) {
-      const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('username')
-        .eq('id', user.id)
-        .maybeSingle();
-      pseudo = profile?.username || email.split('@')[0];
-    }
-
-    currentUser = { id: user.id, username: pseudo };
-    gererEtatSession();
-    fermerModal();
-    await synchroniserDepuisCloud();
-  }
-}
-
-async function deconnecterUtilisateur() {
+function declencherImportation() {
   if (running) {
-    clearInterval(masterInterval);
-    clearTimeout(presenceTimer);
-    running = false;
-    presenceMode = null;
-    pendingVictory = null;
+    if (!confirm("Une session est en cours. Importer une sauvegarde annulera la session actuelle. Continuer ?")) {
+      return;
+    }
+    declarerEchec("SESSION RÉINITIALISÉE PAR IMPORT");
   }
-
-  if (supabaseClient) {
-    await supabaseClient.auth.signOut();
-  }
-
-  isCloudSynced = false;
-  currentUser = null;
-  localStorage.removeItem('meditation_presence_stats');
-  localStorage.removeItem('meditation_presence_config');
-
-  selectedTierId = "1m";
-  appliquerParametres(initialiserStructureConfig());
-  gererChangementDistribution();
-  rafraichirAffichageStats();
-  actualiserBoutonRecommencer();
-  $('rewardChoiceSection').style.display = 'none';
-  $('actionBtn').style.display = 'flex';
-
-  majIndicateurSync('offline');
-  gererEtatSession();
+  $('fileInputImport').click();
 }
 
-async function initialiserAuth() {
-  if (!supabaseClient) {
-    majIndicateurSync('offline');
-    gererEtatSession();
-    return;
-  }
+function gererFichierImport(event) {
+  const fichier = event.target.files?.[0];
+  if (!fichier) return;
 
-  supabaseClient.auth.onAuthStateChange(async (event, session) => {
-    if (session?.user) {
-      let pseudo = session.user.user_metadata?.username;
-      if (!pseudo) {
-        const { data: profile } = await supabaseClient
-          .from('profiles')
-          .select('username')
-          .eq('id', session.user.id)
-          .maybeSingle();
-        pseudo = profile?.username || session.user.email?.split('@')[0] || "UTILISATEUR";
+  const lecteur = new FileReader();
+  lecteur.onload = e => {
+    try {
+      const payload = JSON.parse(e.target.result);
+      if (!payload || !payload.stats) {
+        throw new Error("Format JSON non valide : bloc 'stats' manquant.");
       }
 
-      currentUser = { id: session.user.id, username: pseudo };
-      gererEtatSession();
-      await synchroniserDepuisCloud();
-    } else {
-      currentUser = null;
-      gererEtatSession();
-      majIndicateurSync('offline');
+      const statsValidees = parserEtValiderStats(payload.stats);
+      enregistrerDonneesStats(statsValidees);
+
+      if (payload.config) {
+        appliquerParametres(payload.config);
+        sauvegarderParametres();
+      }
+
+      gererChangementDistribution();
+      rafraichirAffichageStats();
+      actualiserBoutonRecommencer();
+      alert("Progression restaurée avec succès !");
+    } catch (err) {
+      alert("Erreur lors de l'import : " + err.message);
+    } finally {
+      event.target.value = "";
     }
-  });
-
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) {
-    majIndicateurSync('offline');
-    gererEtatSession();
-  }
+  };
+  lecteur.readAsText(fichier);
 }
 
-function gererEtatSession() {
-  const btnLogin = $('btnLogin');
-  const btnRegister = $('btnRegister');
-  const btnLogout = $('btnLogout');
-  const userAccountActions = $('userAccountActions');
-
-  if (currentUser) {
-    btnLogin.classList.add('hidden');
-    btnRegister.classList.add('hidden');
-    btnLogout.classList.remove('hidden');
-    btnLogout.textContent = `DÉCONNEXION (${(currentUser.username || '').toUpperCase()})`;
-    if (userAccountActions) userAccountActions.classList.remove('hidden');
-  } else {
-    btnLogin.classList.remove('hidden');
-    btnRegister.classList.remove('hidden');
-    btnLogout.classList.add('hidden');
-    if (userAccountActions) userAccountActions.classList.add('hidden');
-  }
-}
+// --- LOGIQUE METIER & PALIERS ---
 
 const getTierActuel = () => DURATION_TIERS.find(t => t.id === selectedTierId) || DURATION_TIERS[0];
 const getTierCout = t => Math.round(t.minSec * (t.buyMult || 1.2));
@@ -526,7 +213,7 @@ function rafraichirAffichageStats() {
   const today = dateJour();
   const tierObj = getTierActuel();
 
-  $('statDayStreak').textContent = `${data.dayStreak} j`;
+  $('statDayStreak').textContent = `${data.dayStreak}j`;
   $('statDayStreakRecord').textContent = `Record : ${data.dayStreakRecord || 0} j`;
   $('statBank').textContent = formaterTemps(data.bankSeconds || 0, true);
 
@@ -563,7 +250,7 @@ function rafraichirAffichageStats() {
   }
 }
 
-async function acheterStreak() {
+function acheterStreak() {
   if (running || pendingVictory) return;
   const data = chargerDonneesStats();
   const today = dateJour();
@@ -577,12 +264,12 @@ async function acheterStreak() {
   const tData = data.tiers[tier.id] = data.tiers[tier.id] || { streak: 0, record: 0, lastDate: null };
   updateStreakData(tData, 'lastDate', 'streak', 'record', today);
 
-  await enregistrerDonneesStats(data);
+  enregistrerDonneesStats(data);
   rafraichirAffichageStats();
   alert(`Streak ${tier.label} acheté avec succès !`);
 }
 
-async function traiterRecompenseSession(choix) {
+function traiterRecompenseSession(choix) {
   if (!pendingVictory) return;
   const { dureeReelle, targetTier } = pendingVictory;
   const stats = chargerDonneesStats();
@@ -602,7 +289,7 @@ async function traiterRecompenseSession(choix) {
     texteResultat = `+${formaterTemps(gain)} ${isSacrifice ? '(SACRIFICE)' : 'SOLDÉ'}`;
   }
 
-  await enregistrerDonneesStats(stats);
+  enregistrerDonneesStats(stats);
   rafraichirAffichageStats();
 
   const tempsTenu = formaterTemps(dureeReelle);
@@ -774,27 +461,10 @@ function reinitialiserBouton(label = "COMMENCER") {
   btn.className = "";
 }
 
-// Écouteurs d'événements - Authentification & Profil
-$('btnRegister').addEventListener('click', () => ouvrirModal('register'));
-$('btnLogin').addEventListener('click', () => ouvrirModal('login'));
-$('btnLogout').addEventListener('click', deconnecterUtilisateur);
-
-// Nouveaux écouteurs de modification de compte
-$('btnEditUsername').addEventListener('click', () => ouvrirModal('edit_username'));
-$('btnEditPassword').addEventListener('click', () => ouvrirModal('edit_password'));
-
-if ($('btnModalCancel')) $('btnModalCancel').addEventListener('click', fermerModal);
-if ($('btnModalSubmit')) $('btnModalSubmit').addEventListener('click', soumettreAuthentification);
-if ($('modalPassword')) {
-  $('modalPassword').addEventListener('keydown', e => {
-    if (e.key === 'Enter') soumettreAuthentification();
-  });
-}
-if ($('modalUsername')) {
-  $('modalUsername').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && authMode === 'edit_username') soumettreAuthentification();
-  });
-}
+// Écouteurs d'événements - Import & Export JSON
+$('btnExport').addEventListener('click', exporterDonneesJSON);
+$('btnImport').addEventListener('click', declencherImportation);
+$('fileInputImport').addEventListener('change', gererFichierImport);
 
 // Écouteurs d'événements - Sessions & Récompenses
 $('actionBtn').addEventListener('click', handleClick);
@@ -814,4 +484,3 @@ chargerParametres();
 gererChangementDistribution();
 rafraichirAffichageStats();
 actualiserBoutonRecommencer();
-initialiserAuth();

@@ -19,6 +19,7 @@ body {
   padding: 10px 14px;
 }
 
+/* Socle commun : conteneurs pleine largeur (max 360px) */
 .card,
 .backup-actions,
 .mode-select-container,
@@ -30,6 +31,34 @@ body {
   max-width: 360px;
 }
 
+/* Socle commun : éléments encadrés (boutons, sélecteurs, bannières) */
+button,
+select,
+.unified-stats-card,
+#bonusInfo {
+  background: #000;
+  color: #fff;
+  border: 1px solid #fff;
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+/* Socle commun : boutons cliquables */
+button {
+  cursor: pointer;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+select:disabled {
+  border-color: #444;
+  color: #555;
+  -webkit-text-fill-color: #555;
+  cursor: not-allowed;
+}
+
+/* Actions de sauvegarde */
 .backup-actions {
   display: flex;
   justify-content: space-between;
@@ -39,40 +68,14 @@ body {
 
 .btn-secondary {
   flex: 1;
-  background: #000;
-  border: 1px solid #fff;
-  color: #fff;
   font-size: 0.68rem;
   padding: 7px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  text-transform: uppercase;
-  transition: background 0.2s, color 0.2s;
 }
 
-.btn-secondary:hover {
-  background: #fff;
-  color: #000;
-}
-
-.unified-stats-card,
-.config-card {
-  background: #000;
-  border: 1px solid #fff;
-  border-radius: 8px;
-  margin-bottom: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
+/* Carte de statistiques */
 .unified-stats-card {
+  margin-bottom: 6px;
   padding: 8px 10px;
-}
-
-.config-card {
-  padding: 8px 12px;
 }
 
 .stats-header {
@@ -107,7 +110,7 @@ body {
   margin-top: 1px;
 }
 
-/* Grille et paliers */
+/* Grille de paliers */
 .tiers-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -119,9 +122,8 @@ body {
   width: 100%;
   height: 68px;
   background: #000;
-  border: 1px solid #666;
+  border: 1px solid #555;
   border-radius: 6px;
-  padding: 2px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -129,11 +131,6 @@ body {
   cursor: pointer;
   color: #666;
   overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
-}
-
-.tier-box:active {
-  transform: scale(0.97);
 }
 
 .tier-box span {
@@ -145,60 +142,33 @@ body {
   color: inherit;
 }
 
-.tier-label {
-  font-size: 0.62rem;
-  font-weight: 700;
-}
+.tier-label { font-size: 0.62rem; font-weight: 700; }
+.tier-val { font-size: 0.76rem; font-weight: 700; font-family: "SF Mono", Monaco, Consolas, monospace; }
+.tier-rec { font-size: 0.58rem; }
+.tier-mult { font-size: 0.55rem; font-family: "SF Mono", Monaco, Consolas, monospace; }
+.tier-sac { font-size: 0.52rem; font-family: "SF Mono", Monaco, Consolas, monospace; }
 
-.tier-val {
-  font-size: 0.76rem;
-  font-weight: 700;
-  font-family: "SF Mono", Monaco, Consolas, monospace;
-}
-
-.tier-rec {
-  font-size: 0.58rem;
-}
-
-.tier-mult {
-  font-size: 0.55rem;
-  font-family: "SF Mono", Monaco, Consolas, monospace;
-}
-
-.tier-sac {
-  font-size: 0.52rem;
-  font-family: "SF Mono", Monaco, Consolas, monospace;
-  color: inherit;
-}
-
-.tier-box.locked {
-  border-color: #666;
-  color: #666;
-}
-
-/* Palier validé : cadre gris identique aux non validés (#666), texte restant en blanc (#fff) */
 .tier-box.completed-today {
-  border-color: #666;
   color: #fff;
+  border-color: #888;
 }
 
 .tier-box.selected-target {
-  outline: 2px solid #fff;
-  outline-offset: -2px;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.95);
+  border-color: #fff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
 }
 
-/* Actions sous stats */
+/* Bloc sous la carte de stats (Achat ou Déjà validé) : dimensions et socle identiques */
 #bonusInfo,
 #btnBuyStreak {
   width: 100%;
-  height: 34px;
-  margin: 0 0 6px 0;
-  padding: 0 10px;
-  border: 1px dashed #fff;
-  border-radius: 8px;
+  max-width: 360px;
+  height: 38px;
+  margin: 0 auto 6px auto;
+  padding: 0 12px;
   background: #000;
-  color: #fff;
+  border: 1px solid #fff;
+  border-radius: 8px;
   font-family: inherit;
   font-size: 0.75rem;
   font-weight: 700;
@@ -207,99 +177,69 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
+  text-align: center;
 }
 
+/* État 1 : Acheter le streak (actif) -> texte blanc */
+#btnBuyStreak {
+  color: #fff;
+  cursor: pointer;
+}
+
+/* État 2 : Palier déjà validé -> texte blanc, cadre blanc */
 #bonusInfo {
   display: none;
+  color: #fff;
   cursor: default;
+}
+
+/* État 3 : Désactivé (solde insuffisant) -> cadre blanc préservé, texte gris */
+#btnBuyStreak:disabled {
+  border-color: #fff;
+  color: #777;
+  -webkit-text-fill-color: #777;
+  cursor: not-allowed;
 }
 
 #buySection {
   width: 100%;
-  margin: 0;
+  max-width: 360px;
   display: none;
+  margin: 0 auto;
 }
 
-#btnBuyStreak {
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-#btnBuyStreak:hover:not(:disabled) {
-  background: #fff;
-  color: #000;
-}
-
-#btnBuyStreak:disabled {
-  border-color: #444;
-  color: #555;
-  cursor: not-allowed;
-}
-
-/* Configuration des surprises */
-.config-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.row-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-select {
-  background: #000;
-  border: 1px solid #fff;
-  color: #fff;
-  border-radius: 6px;
-  font-size: 0.82rem;
-  outline: none;
-  padding: 4px 6px;
-  max-width: 185px;
-  font-weight: 600;
-}
-
-select:disabled {
-  border-color: #555;
-  color: #555;
-  -webkit-text-fill-color: #555;
-}
-
-/* Sélecteur de tirage déroulant sur toute la longueur */
+/* Menus déroulants */
 .mode-select-container {
   margin-bottom: 6px;
 }
 
 .full-width-select {
   width: 100%;
-  max-width: 100%;
   padding: 9px 12px;
   font-size: 0.8rem;
-  border-radius: 8px;
   text-align: center;
-  cursor: pointer;
-  background: #000;
-  color: #fff;
-  border: 1px solid #fff;
+  outline: none;
+  font-weight: 600;
 }
 
-/* Bouton principal & Choix de récompense */
+/* Boutons de choix de récompense */
+#rewardChoiceSection {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.btn-reward {
+  padding: 10px 8px;
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+/* Bouton principal */
 #actionBtn {
-  background: #fff;
-  color: #000;
-  border: 1px solid #fff;
   padding: 10px 14px;
-  border-radius: 8px;
-  font-family: inherit;
   font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  cursor: pointer;
   min-height: 44px;
   line-height: 1.3;
   white-space: pre-line;
@@ -309,123 +249,6 @@ select:disabled {
   justify-content: center;
 }
 
-#actionBtn:active {
-  transform: scale(0.98);
-}
-
-#actionBtn.stop,
-#actionBtn.presence {
-  background: #000;
-  color: #fff;
-  font-size: 0.85rem;
-}
-
-#actionBtn.stop:active,
-#actionBtn.presence:active {
-  background: #fff;
-  color: #000;
-}
-
-#rewardChoiceSection {
-  display: none;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.btn-reward {
-  background: #000;
-  border: 1px solid #fff;
-  color: #fff;
-  padding: 10px 8px;
-  border-radius: 8px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  text-transform: uppercase;
-  line-height: 1.3;
-  transition: background 0.2s, color 0.2s;
-}
-
-.btn-reward:hover {
-  background: #fff;
-  color: #000;
-}
-
-.btn-reward:active {
-  transform: scale(0.98);
-}
-
 .hidden {
   display: none !important;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 14px;
-}
-
-.modal-card {
-  background: #000;
-  border: 1px solid #fff;
-  border-radius: 8px;
-  padding: 16px;
-  width: 100%;
-  max-width: 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.modal-card h3 {
-  margin: 0;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.modal-card input {
-  background: #111;
-  border: 1px solid #444;
-  color: #fff;
-  border-radius: 6px;
-  padding: 8px;
-  font-size: 0.85rem;
-  outline: none;
-}
-
-.modal-card input:focus {
-  border-color: #fff;
-}
-
-.modal-buttons {
-  display: flex;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.sync-card {
-  width: 100%;
-  max-width: 360px;
-  background: #000;
-  border: 1px solid #fff;
-  border-radius: 6px;
-  padding: 6px 10px;
-  margin: 0 0 6px 0;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
 }
