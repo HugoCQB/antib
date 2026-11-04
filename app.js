@@ -18,17 +18,18 @@ function majIndicateurSync(etat, message) {
   if (!el) return;
   switch (etat) {
     case 'saving':
-      el.textContent = "⟳ ENREGISTREMENT CLOUD...";
+      el.textContent = "ENREGISTREMENT CLOUD...";
       break;
     case 'synced':
-      el.textContent = `● SYNCHRONISÉ (${message || new Date().toLocaleTimeString()})`;
+      el.textContent = `SYNCHRONISÉ (${message || new Date().toLocaleTimeString()})`;
       break;
     case 'error':
-      el.textContent = `▲ ERREUR SYNCHRO : ${message ? message.toUpperCase() : "ÉCHEC"}`;
+      //el.textContent = `ERREUR SYNCHRO : ${message ? message.toUpperCase() : "ÉCHEC"}`;
+      el.textContent = `HORS LIGNE`;
       break;
     case 'offline':
     default:
-      el.textContent = "● MODE LOCAL (NON CONNECTÉ)";
+      el.textContent = "MODE LOCAL (NON CONNECTÉ)";
       break;
   }
 }
