@@ -190,40 +190,19 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    .inputs-wrapper { 
-      display: flex; 
-      align-items: center; 
-      gap: 3px; 
-    }
-    .unit-tag { 
-      font-size: 0.68rem; 
-      margin-right: 2px; 
-      font-weight: 600; 
-      color: #aaa;
-    }
 
-    input[type="number"], select {
+    select {
       background: #000;
       border: 1px solid #fff;
       color: #fff;
       border-radius: 6px;
       font-size: 0.82rem;
       outline: none;
+      padding: 4px 6px;
+      max-width: 185px;
+      font-weight: 600;
     }
-    input[type="number"] {
-      padding: 3px 1px;
-      width: 36px;
-      text-align: center;
-      font-weight: bold;
-      -moz-appearance: textfield;
-    }
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-    select { padding: 4px 6px; max-width: 185px; font-weight: 600; }
-    input:disabled, select:disabled { border-color: #555; color: #555; -webkit-text-fill-color: #555; }
+    select:disabled { border-color: #555; color: #555; -webkit-text-fill-color: #555; }
 
     .checkbox-label {
       display: flex;
@@ -277,13 +256,8 @@
       line-height: 1.3;
       transition: background 0.2s, color 0.2s;
     }
-    .btn-reward:hover {
-      background: #fff;
-      color: #000;
-    }
-    .btn-reward:active {
-      transform: scale(0.98);
-    }
+    .btn-reward:hover { background: #fff; color: #000; }
+    .btn-reward:active { transform: scale(0.98); }
 
     #stopwatch {
       font-family: "SF Mono", Monaco, Consolas, monospace;
@@ -326,33 +300,11 @@
   </div>
 
   <div class="config-card card">
-    <div class="config-row" id="rowMin">
-      <span class="row-label">Min</span>
-      <div class="inputs-wrapper">
-        <input type="number" id="minH" value="0" min="0" max="99">
-        <span class="unit-tag">h</span>
-        <input type="number" id="minM" value="0" min="0" max="59">
-        <span class="unit-tag">m</span>
-        <input type="number" id="minS" value="5" min="0" max="59">
-        <span class="unit-tag">s</span>
-      </div>
-    </div>
-    <div class="config-row">
-      <span class="row-label">Max</span>
-      <div class="inputs-wrapper">
-        <input type="number" id="maxH" value="0" min="0" max="99">
-        <span class="unit-tag">h</span>
-        <input type="number" id="maxM" value="3" min="0" max="59">
-        <span class="unit-tag">m</span>
-        <input type="number" id="maxS" value="3" min="0" max="59">
-        <span class="unit-tag">s</span>
-      </div>
-    </div>
     <div class="config-row">
       <span class="row-label">Tirage</span>
       <select id="probDist">
-        <option value="fixed">Durée fixe (Max)</option>
-        <option value="linear" selected>Linéaire (vers max)</option>
+        <option value="fixed">Durée fixe (Palier)</option>
+        <option value="linear" selected>Linéaire (vers palier)</option>
         <option value="uniform">Uniforme (classique)</option>
       </select>
     </div>
@@ -388,6 +340,7 @@
 
     const DURATION_TIERS = [
       { id: "1m",   label: "≥ 1m",   minSec: 60,    rateFull: 0.15, rateSacrifice: 0.12, buyMult: 2.5 },
+      { id: "2m",   label: "≥ 2m",   minSec: 120,    rateFull: 0.17, rateSacrifice: 0.13, buyMult: 2.3 },
       { id: "5m",   label: "≥ 5m",   minSec: 300,   rateFull: 0.20, rateSacrifice: 0.15, buyMult: 2.2 },
       { id: "10m",  label: "≥ 10m",  minSec: 600,   rateFull: 0.25, rateSacrifice: 0.18, buyMult: 2.0 },
       { id: "15m",  label: "≥ 15m",  minSec: 900,   rateFull: 0.30, rateSacrifice: 0.22, buyMult: 1.8 },
@@ -406,8 +359,8 @@
       { id: "6h",   label: "≥ 6h",   minSec: 21600, rateFull: 0.68, rateSacrifice: 0.26, buyMult: 1.1 }
     ];
 
-    let selectedTierId = null, running = false, presenceMode = null;
-    let targetSeconds = 0, configuredMaxSeconds = 0, elapsedSeconds = 0;
+    let selectedTierId = "1m", running = false, presenceMode = null;
+    let targetSeconds = 0, configuredMaxSeconds = 60, elapsedSeconds = 0;
     let pauseOffsetMs = 0, pauseStartMs = 0, startTime = 0;
     let masterInterval = null, presenceTimer = null;
     let surpriseProbPerSec = 0, lastSurpriseEndSecond = -999;
@@ -420,10 +373,6 @@
 
     const recupererDateJour = () => new Date().toISOString().slice(0, 10);
     const calculerEcartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
-    const lireSecondesConfig = (hId, mId, sId) => 
-      (parseInt($(hId).value, 10) || 0) * 3600 +
-      (parseInt($(mId).value, 10) || 0) * 60 +
-      (parseInt($(sId).value, 10) || 0);
 
     function chargerDonneesStats() {
       const defaut = { lastActiveDate: null, dayStreak: 0, dayStreakRecord: 0, bankSeconds: 0, tiers: {} };
@@ -453,34 +402,19 @@
       try { localStorage.setItem('meditation_presence_stats', JSON.stringify(data)); } catch {}
     };
 
+    function obtenirMaxSecActuel() {
+      const tier = DURATION_TIERS.find(t => t.id === selectedTierId) || DURATION_TIERS[0];
+      return tier.minSec;
+    }
+
     function actualiserBoutonRecommencer() {
       if (running || pendingVictory) return;
-      reinitialiserBouton(`COMMENCER\n${formaterTemps(lireSecondesConfig('maxH', 'maxM', 'maxS'))}`);
+      reinitialiserBouton(`COMMENCER\n${formaterTemps(obtenirMaxSecActuel())}`);
     }
 
     function selectionnerPalier(id) {
       if (running || pendingVictory) return;
-      if (selectedTierId === id) {
-        selectedTierId = null;
-      } else {
-        selectedTierId = id;
-        const t = DURATION_TIERS.find(tier => tier.id === id);
-        if (t) {
-          $('maxH').value = Math.floor(t.minSec / 3600);
-          $('maxM').value = Math.floor((t.minSec % 3600) / 60);
-          $('maxS').value = t.minSec % 60;
-          sauvegarderParametres();
-        }
-      }
-      rafraichirAffichageStats();
-      actualiserBoutonRecommencer();
-    }
-
-    function actualiserPalierSelonMax() {
-      const maxSec = lireSecondesConfig('maxH', 'maxM', 'maxS');
-      const match = [...DURATION_TIERS].reverse().find(t => maxSec >= t.minSec);
-      selectedTierId = match ? match.id : null;
-
+      selectedTierId = id;
       sauvegarderParametres();
       rafraichirAffichageStats();
       actualiserBoutonRecommencer();
@@ -527,8 +461,9 @@
 
       if (tierObj && !running && !pendingVictory && !isSelectedDoneToday) {
         const costSec = Math.round(tierObj.minSec * (tierObj.buyMult || 1.2));
+        const mult = tierObj.buyMult || 1.2;
         buySec.style.display = 'block';
-        $('btnBuyStreak').textContent = `Acheter streak ${tierObj.label} (${formaterTempsCourt(costSec)})`;
+        $('btnBuyStreak').textContent = `Acheter streak ${tierObj.label}×${mult} (${formaterTempsCourt(costSec)})`;
         $('btnBuyStreak').disabled = (data.bankSeconds || 0) < costSec;
       } else {
         buySec.style.display = 'none';
@@ -567,7 +502,7 @@
 
     function exporterSauvegarde() {
       const exportData = {
-        version: 8,
+        version: 9,
         dateExport: new Date().toISOString(),
         config: localStorage.getItem('meditation_presence_config'),
         stats: localStorage.getItem('meditation_presence_stats')
@@ -594,7 +529,8 @@
           chargerParametres();
           gererChangementDistribution();
           toggleChronoDisplay();
-          actualiserPalierSelonMax();
+          rafraichirAffichageStats();
+          actualiserBoutonRecommencer();
           alert("Données importées avec succès.");
         } catch {
           alert("Erreur lors de l'import : fichier corrompu ou invalide.");
@@ -606,7 +542,7 @@
 
     function traiterRecompenseSession(choix) {
       if (!pendingVictory) return;
-      const { maxSecSession, dureeReelle, targetTier } = pendingVictory;
+      const { dureeReelle, targetTier } = pendingVictory;
       const stats = chargerDonneesStats();
       const today = recupererDateJour();
       let gainBanque = 0;
@@ -651,8 +587,7 @@
     function sauvegarderParametres() {
       try {
         localStorage.setItem('meditation_presence_config', JSON.stringify({
-          minH: $('minH').value, minM: $('minM').value, minS: $('minS').value,
-          maxH: $('maxH').value, maxM: $('maxM').value, maxS: $('maxS').value,
+          selectedTierId: selectedTierId,
           surpriseFreq: $('surpriseFreq').value,
           probDist: $('probDist').value,
           showStopwatch: $('showStopwatch').checked
@@ -663,7 +598,10 @@
     function chargerParametres() {
       try {
         const config = JSON.parse(localStorage.getItem('meditation_presence_config') || '{}');
-        ['minH', 'minM', 'minS', 'maxH', 'maxM', 'maxS', 'surpriseFreq', 'probDist'].forEach(k => {
+        if (config.selectedTierId && DURATION_TIERS.some(t => t.id === config.selectedTierId)) {
+          selectedTierId = config.selectedTierId;
+        }
+        ['surpriseFreq', 'probDist'].forEach(k => {
           if (config[k] !== undefined && $(k)) $(k).value = config[k];
         });
         if (config.showStopwatch !== undefined) $('showStopwatch').checked = config.showStopwatch;
@@ -672,8 +610,6 @@
 
     function gererChangementDistribution() {
       const isFixed = $('probDist').value === 'fixed';
-      $('minH').disabled = $('minM').disabled = $('minS').disabled = isFixed;
-      $('rowMin').style.display = isFixed ? "none" : "flex";
       $('surpriseFreq').disabled = !isFixed;
       $('rowSurprise').style.display = isFixed ? "flex" : "none";
     }
@@ -718,13 +654,13 @@
       if (mode === 'fixed' || minSec >= maxSec) return maxSec;
       const u = Math.random();
       const mult = mode === 'linear' ? Math.sqrt(u) : u;
-      return minSec + Math.floor(mult * (maxSec - minSec + 1));
+      return Math.max(1, minSec + Math.floor(mult * (maxSec - minSec + 1)));
     }
 
     function toggleFormInputs(disabled) {
-      ['maxH', 'maxM', 'maxS', 'showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
+      ['showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
       if (disabled) {
-        $('minH').disabled = $('minM').disabled = $('minS').disabled = $('surpriseFreq').disabled = true;
+        $('surpriseFreq').disabled = true;
         $('buySection').style.display = $('bonusInfo').style.display = 'none';
       } else {
         gererChangementDistribution();
@@ -786,12 +722,11 @@
     function demarrerSession() {
       sauvegarderParametres();
 
-      const minTotal = lireSecondesConfig('minH', 'minM', 'minS');
-      const maxTotal = lireSecondesConfig('maxH', 'maxM', 'maxS');
+      const minTotal = 0; // minSec fixé en permanence à 0
+      const maxTotal = obtenirMaxSecActuel();
       const distMode = $('probDist').value;
 
-      if (maxTotal <= 0) return alert("La durée maximum doit être supérieure à 0.");
-      if (distMode !== 'fixed' && minTotal > maxTotal) return alert("Le minimum ne peut pas dépasser le maximum.");
+      if (maxTotal <= 0) return alert("Sélectionnez un palier valide.");
 
       configuredMaxSeconds = maxTotal;
       targetSeconds = calculerTempsCible(minTotal, maxTotal, distMode);
@@ -832,7 +767,7 @@
       if (elapsedSeconds >= targetSeconds) {
         clearInterval(masterInterval);
         running = false;
-        activerCompteARebours('final', 10, "!", "NON VALIDÉ");
+        activerCompteARebours('final', 10, "APPUYER!", "NON VALIDÉ");
         return;
       }
 
@@ -842,7 +777,7 @@
 
         if (delaiEcoule && pasTropProcheFin && Math.random() < surpriseProbPerSec) {
           pauseStartMs = Date.now();
-          activerCompteARebours('mid', 10, "?", "CONTRÔLE MANQUÉ");
+          activerCompteARebours('mid', 10, "APPUYER?", "CONTRÔLE MANQUÉ");
         }
       }
     }
@@ -889,9 +824,6 @@
     $('btnChooseStreak').addEventListener('click', () => traiterRecompenseSession('streak'));
     $('btnChooseBank').addEventListener('click', () => traiterRecompenseSession('bank_half'));
 
-    ['minH', 'minM', 'minS'].forEach(id => $(id).addEventListener('input', sauvegarderParametres));
-    ['maxH', 'maxM', 'maxS'].forEach(id => $(id).addEventListener('input', actualiserPalierSelonMax));
-
     $('surpriseFreq').addEventListener('change', sauvegarderParametres);
     $('probDist').addEventListener('change', () => {
       gererChangementDistribution();
@@ -906,7 +838,9 @@
     chargerParametres();
     gererChangementDistribution();
     toggleChronoDisplay();
-    actualiserPalierSelonMax();
+    rafraichirAffichageStats();
+    actualiserBoutonRecommencer();
   </script>
 </body>
 </html>
+
