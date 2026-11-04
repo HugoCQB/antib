@@ -1,0 +1,367 @@
+* {
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  background: #000;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  text-align: center;
+  padding: 10px 14px;
+}
+
+.card,
+.backup-actions,
+#actionBtn,
+#buySection,
+#bonusInfo,
+#rewardChoiceSection {
+  width: 100%;
+  max-width: 360px;
+}
+
+.backup-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.btn-secondary {
+  flex: 1;
+  background: #000;
+  border: 1px solid #fff;
+  color: #fff;
+  font-size: 0.68rem;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  text-transform: uppercase;
+  transition: background 0.2s, color 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #fff;
+  color: #000;
+}
+
+.unified-stats-card,
+.config-card {
+  background: #000;
+  border: 1px solid #fff;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.unified-stats-card {
+  padding: 8px 10px;
+}
+
+.config-card {
+  padding: 8px 12px;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: 6px;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 1px;
+  font-weight: 600;
+}
+
+.stat-val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+}
+
+.stat-sub {
+  font-size: 0.68rem;
+  margin-top: 1px;
+}
+
+/* Grille et paliers */
+.tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+
+.tier-box {
+  width: 100%;
+  height: 68px;
+  background: #000;
+  border: 1px solid #666;
+  border-radius: 6px;
+  padding: 2px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #666;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.tier-box:active {
+  transform: scale(0.97);
+}
+
+.tier-box span {
+  display: block;
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.15;
+  color: inherit;
+}
+
+.tier-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.tier-val {
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+}
+
+.tier-rec {
+  font-size: 0.58rem;
+}
+
+.tier-mult {
+  font-size: 0.55rem;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+}
+
+.tier-sac {
+  font-size: 0.52rem;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  color: inherit;
+}
+
+.tier-box.locked {
+  border-color: #666;
+  color: #666;
+}
+
+.tier-box.completed-today {
+  border-color: #fff;
+  color: #fff;
+}
+
+.tier-box.selected-target {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.95);
+}
+
+/* Actions secondaires sous stats */
+#bonusInfo,
+#btnBuyStreak {
+  width: 100%;
+  height: 34px;
+  margin: 0 0 6px 0;
+  padding: 0 10px;
+  border: 1px dashed #fff;
+  border-radius: 8px;
+  background: #000;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+#bonusInfo {
+  display: none;
+  cursor: default;
+}
+
+#buySection {
+  width: 100%;
+  margin: 0;
+  display: none;
+}
+
+#btnBuyStreak {
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+#btnBuyStreak:hover:not(:disabled) {
+  background: #fff;
+  color: #000;
+}
+
+#btnBuyStreak:disabled {
+  border-color: #444;
+  color: #555;
+  cursor: not-allowed;
+}
+
+/* Configuration */
+.config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.row-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+select {
+  background: #000;
+  border: 1px solid #fff;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  outline: none;
+  padding: 4px 6px;
+  max-width: 185px;
+  font-weight: 600;
+}
+
+select:disabled {
+  border-color: #555;
+  color: #555;
+  -webkit-text-fill-color: #555;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.checkbox-label input {
+  width: 15px;
+  height: 15px;
+  accent-color: #fff;
+  cursor: pointer;
+}
+
+/* Bouton principal & Choix de récompense */
+#actionBtn {
+  background: #fff;
+  color: #000;
+  border: 1px solid #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  min-height: 44px;
+  line-height: 1.3;
+  white-space: pre-line;
+  margin-bottom: 6px;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#actionBtn:active {
+  transform: scale(0.98);
+}
+
+#actionBtn.stop,
+#actionBtn.presence {
+  background: #000;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+#actionBtn.stop:active,
+#actionBtn.presence:active {
+  background: #fff;
+  color: #000;
+}
+
+#rewardChoiceSection {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.btn-reward {
+  background: #000;
+  border: 1px solid #fff;
+  color: #fff;
+  padding: 10px 8px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  text-transform: uppercase;
+  line-height: 1.3;
+  transition: background 0.2s, color 0.2s;
+}
+
+.btn-reward:hover {
+  background: #fff;
+  color: #000;
+}
+
+.btn-reward:active {
+  transform: scale(0.98);
+}
+
+#stopwatch {
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: 1.15rem;
+  letter-spacing: 2px;
+  min-height: 22px;
+  font-weight: 700;
+}
+
+.hidden {
+  display: none !important;
+}
