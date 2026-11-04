@@ -12,7 +12,7 @@ let isCloudSynced = false;
 
 const $ = id => document.getElementById(id);
 
-// --- INDICATEUR D'ÉTAT DE SYNCHRONISATION (NOIR & BLANC DANS CADRE) ---
+// --- INDICATEUR D'ÉTAT DE SYNCHRONISATION ---
 function majIndicateurSync(etat, message) {
   const el = $('cloudSyncStatus');
   if (!el) return;
@@ -24,7 +24,6 @@ function majIndicateurSync(etat, message) {
       el.textContent = `SYNCHRONISÉ (${message || new Date().toLocaleTimeString()})`;
       break;
     case 'error':
-      //el.textContent = `ERREUR SYNCHRO : ${message ? message.toUpperCase() : "ÉCHEC"}`;
       el.textContent = `HORS LIGNE`;
       break;
     case 'offline':
@@ -32,13 +31,6 @@ function majIndicateurSync(etat, message) {
       el.textContent = "MODE LOCAL (NON CONNECTÉ)";
       break;
   }
-}
-
-async function hashPassword(password) {
-  const msgBuffer = new TextEncoder().encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 const DURATION_TIERS = [
@@ -94,8 +86,7 @@ function initialiserStructureConfig() {
   return {
     selectedTierId: "1m",
     surpriseFreq: "0.011",
-    probDist: "linear",
-    showStopwatch: true
+    probDist: "linear"
   };
 }
 
@@ -125,7 +116,6 @@ function chargerDonneesStats() {
   }
 }
 
-// Enregistrement unifié avec synchronisation explicite
 async function sauvegarderVersSupabase(payload) {
   if (!supabaseClient || !currentUser || !isCloudSynced) return;
   majIndicateurSync('saving');
@@ -161,8 +151,7 @@ async function sauvegarderParametres() {
   const conf = {
     selectedTierId,
     surpriseFreq: $('surpriseFreq').value,
-    probDist: $('probDist').value,
-    showStopwatch: $('showStopwatch').checked
+    probDist: $('probDist').value
   };
 
   try {
@@ -180,9 +169,6 @@ function appliquerParametres(config) {
   ['surpriseFreq', 'probDist'].forEach(k => {
     if (config[k] !== undefined && $(k)) $(k).value = config[k];
   });
-  if (config.showStopwatch !== undefined) {
-    $('showStopwatch').checked = config.showStopwatch;
-  }
 }
 
 function chargerParametres() {
@@ -217,7 +203,6 @@ async function synchroniserDepuisCloud() {
       localStorage.setItem('meditation_presence_config', JSON.stringify(config));
       appliquerParametres(config);
     } else {
-      // Première initialisation du profil
       const statsVierges = initialiserStructureStats();
       const configDefaut = initialiserStructureConfig();
 
@@ -236,7 +221,6 @@ async function synchroniserDepuisCloud() {
     isCloudSynced = true;
     majIndicateurSync('synced', 'À jour');
     gererChangementDistribution();
-    toggleChronoDisplay();
     rafraichirAffichageStats();
     actualiserBoutonRecommencer();
   } catch (err) {
@@ -245,86 +229,144 @@ async function synchroniserDepuisCloud() {
   }
 }
 
-// --- AUTHENTIFICATION ---
-function ouvrirModal(mode) {
-  authMode = mode;
-  if ($('modalTitle')) $('modalTitle').textContent = mode === "register" ? "Créer un compte" : "Connexion";
-  if ($('modalUsername')) $('modalUsername').value = "";
-  if ($('modalPassword')) $('modalPassword').value = "";
-  if ($('authModal')) {
-    $('authModal').classList.remove('hidden');
-    $('modalUsername').focus();
-  }
-}
+// --- MODALE & AUTHENTIFICATION (OPTION B : SUPABASE AUTH NATIF) ---
 
 function fermerModal() {
   if ($('authModal')) $('authModal').classList.add('hidden');
 }
 
-async function soumettreAuthentification() {
-  if (!supabaseClient) return alert("Supabase non connecté.");
+function ouvrirModal(mode) {
+  authMode = mode;
+  const isRegister = mode === "register";
 
-  const username = $('modalUsername').value.trim().toLowerCase();
-  const password = $('modalPassword').value;
+  if ($('modalTitle')) {
+    $('modalTitle').textContent = isRegister ? "Créer un compte" : "Connexion";
+  }
 
-  if (!username) return alert("Entrez un nom d'utilisateur.");
-  if (password.length < 4) return alert("Le mot de passe doit comporter au moins 4 caractères.");
+  const emailInput = $('modalEmail');
+  const userInput = $('modalUsername');
+  const passInput = $('modalPassword');
 
-  majIndicateurSync('saving');
-  const passHash = await hashPassword(password);
+  if (emailInput) {
+    emailInput.value = "";
+    emailInput.placeholder = "Adresse e-mail";
+  }
 
-  if (authMode === "register") {
-    const { data: existing } = await supabaseClient
-      .from('app_users')
-      .select('id')
-      .eq('username', username)
-      .maybeSingle();
+  if (userInput) {
+    userInput.value = "";
+    userInput.classList.toggle('hidden', !isRegister);
+    userInput.placeholder = "Pseudo d'affichage";
+  }
 
-    if (existing) {
-      majIndicateurSync('offline');
-      return alert("Ce nom d'utilisateur est déjà pris.");
-    }
+  if (passInput) passInput.value = "";
 
-    const { data: newUser, error } = await supabaseClient
-      .from('app_users')
-      .insert({ username, password_hash: passHash })
-      .select()
-      .single();
-
-    if (error) {
-      majIndicateurSync('error', error.message);
-      return alert("Erreur création : " + error.message);
-    }
-
-    await connecterUtilisateur({ id: newUser.id, username: newUser.username });
-    fermerModal();
-  } else {
-    const { data: user, error } = await supabaseClient
-      .from('app_users')
-      .select('id, username')
-      .eq('username', username)
-      .eq('password_hash', passHash)
-      .maybeSingle();
-
-    if (error || !user) {
-      majIndicateurSync('offline');
-      return alert("Nom d'utilisateur ou mot de passe incorrect.");
-    }
-
-    await connecterUtilisateur({ id: user.id, username: user.username });
-    fermerModal();
+  if ($('authModal')) {
+    $('authModal').classList.remove('hidden');
+    if (emailInput) emailInput.focus();
   }
 }
 
-async function connecterUtilisateur(user) {
-  isCloudSynced = false;
-  currentUser = user;
-  localStorage.setItem('antibrainrot_session', JSON.stringify(user));
-  gererEtatSession();
-  await synchroniserDepuisCloud();
+async function soumettreAuthentification() {
+  if (!supabaseClient) return alert("Supabase non connecté.");
+
+  const isRegister = authMode === "register";
+  const email = $('modalEmail') ? $('modalEmail').value.trim().toLowerCase() : "";
+  const username = $('modalUsername') ? $('modalUsername').value.trim() : "";
+  const password = $('modalPassword') ? $('modalPassword').value : "";
+
+  if (password.length < 6) {
+    return alert("Le mot de passe doit comporter au moins 6 caractères (requis par Supabase).");
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
+    return alert("Veuillez renseigner une adresse e-mail valide.");
+  }
+
+  majIndicateurSync('saving');
+
+  if (isRegister) {
+    // 1. Validation du pseudo
+    if (username.length < 2 || username.length > 25) {
+      majIndicateurSync('offline');
+      return alert("Le pseudo doit contenir entre 2 et 25 caractères.");
+    }
+
+    // 2. Inscription native Supabase Auth
+    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username } // Stocké directement dans les métadonnées de l'utilisateur
+      }
+    });
+
+    if (authError) {
+      majIndicateurSync('error', authError.message);
+      return alert("Erreur création : " + authError.message);
+    }
+
+    const user = authData.user;
+    if (!user) {
+      majIndicateurSync('offline');
+      return alert("Vérifiez vos e-mails pour confirmer l'inscription.");
+    }
+
+    // 3. Création du profil public
+    await supabaseClient.from('profiles').upsert({
+      id: user.id,
+      username: username
+    });
+
+    // 4. Initialisation des progrès
+    const statsVierges = initialiserStructureStats();
+    const configDefaut = initialiserStructureConfig();
+
+    await supabaseClient.from('user_progress').upsert({
+      id: user.id,
+      stats: statsVierges,
+      config: configDefaut,
+      updated_at: new Date().toISOString()
+    });
+
+    currentUser = { id: user.id, username };
+    gererEtatSession();
+    fermerModal();
+    await synchroniserDepuisCloud();
+
+  } else {
+    // Connexion native Supabase Auth
+    const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (authError || !authData.user) {
+      majIndicateurSync('offline');
+      return alert("Adresse e-mail ou mot de passe incorrect.");
+    }
+
+    const user = authData.user;
+
+    // Récupération du pseudo dans profiles (ou métadonnées de secours)
+    let pseudo = user.user_metadata?.username;
+    if (!pseudo) {
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .maybeSingle();
+      pseudo = profile?.username || email.split('@')[0];
+    }
+
+    currentUser = { id: user.id, username: pseudo };
+    gererEtatSession();
+    fermerModal();
+    await synchroniserDepuisCloud();
+  }
 }
 
-function deconnecterUtilisateur() {
+async function deconnecterUtilisateur() {
   if (running) {
     clearInterval(masterInterval);
     clearTimeout(presenceTimer);
@@ -333,19 +375,20 @@ function deconnecterUtilisateur() {
     pendingVictory = null;
   }
 
+  if (supabaseClient) {
+    await supabaseClient.auth.signOut();
+  }
+
   isCloudSynced = false;
   currentUser = null;
-  localStorage.removeItem('antibrainrot_session');
   localStorage.removeItem('meditation_presence_stats');
   localStorage.removeItem('meditation_presence_config');
 
   selectedTierId = "1m";
   appliquerParametres(initialiserStructureConfig());
   gererChangementDistribution();
-  toggleChronoDisplay();
   rafraichirAffichageStats();
   actualiserBoutonRecommencer();
-  $('stopwatch').textContent = formaterChrono(0);
   $('rewardChoiceSection').style.display = 'none';
   $('actionBtn').style.display = 'flex';
 
@@ -354,35 +397,57 @@ function deconnecterUtilisateur() {
 }
 
 async function initialiserAuth() {
-  try {
-    const saved = localStorage.getItem('antibrainrot_session');
-    if (saved) {
-      currentUser = JSON.parse(saved);
+  if (!supabaseClient) {
+    majIndicateurSync('offline');
+    gererEtatSession();
+    return;
+  }
+
+  // Écouteur en direct de l'état d'authentification Supabase
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      let pseudo = session.user.user_metadata?.username;
+      if (!pseudo) {
+        const { data: profile } = await supabaseClient
+          .from('profiles')
+          .select('username')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        pseudo = profile?.username || session.user.email?.split('@')[0] || "UTILISATEUR";
+      }
+
+      currentUser = { id: session.user.id, username: pseudo };
       gererEtatSession();
       await synchroniserDepuisCloud();
-      return;
+    } else {
+      currentUser = null;
+      gererEtatSession();
+      majIndicateurSync('offline');
     }
-  } catch {}
-  majIndicateurSync('offline');
-  gererEtatSession();
+  });
+
+  // Récupération de la session existante au chargement
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) {
+    majIndicateurSync('offline');
+    gererEtatSession();
+  }
 }
 
 function gererEtatSession() {
-  const statusBtn = $('btnUserStatus');
-  const signupSection = $('signupSection');
+  const btnLogin = $('btnLogin');
+  const btnRegister = $('btnRegister');
+  const btnLogout = $('btnLogout');
 
   if (currentUser) {
-    $('btnLogin').classList.add('hidden');
-    $('btnLogout').classList.remove('hidden');
-    if (signupSection) signupSection.classList.add('hidden'); // Supprime le bloc et sa marge quand on est connecté
-
-    if (statusBtn) statusBtn.textContent = currentUser.username.toUpperCase();
+    btnLogin.classList.add('hidden');
+    btnRegister.classList.add('hidden');
+    btnLogout.classList.remove('hidden');
+    btnLogout.textContent = `DÉCONNEXION (${(currentUser.username || '').toUpperCase()})`;
   } else {
-    $('btnLogin').classList.remove('hidden');
-    $('btnLogout').classList.add('hidden');
-    if (signupSection) signupSection.classList.remove('hidden'); // Réaffiche le bloc quand déconnecté
-
-    if (statusBtn) statusBtn.textContent = "Non connecté";
+    btnLogin.classList.remove('hidden');
+    btnRegister.classList.remove('hidden');
+    btnLogout.classList.add('hidden');
   }
 }
 
@@ -496,11 +561,10 @@ async function traiterRecompenseSession(choix) {
 function gererChangementDistribution() {
   const isFixed = $('probDist').value === 'fixed';
   $('surpriseFreq').disabled = !isFixed;
-  $('rowSurprise').style.display = isFixed ? "flex" : "none";
-}
-
-function toggleChronoDisplay() {
-  $('stopwatch').classList.toggle('hidden', !$('showStopwatch').checked);
+  const surpriseCard = $('rowSurpriseCard');
+  if (surpriseCard) {
+    surpriseCard.classList.toggle('hidden', !isFixed);
+  }
 }
 
 function formaterTemps(totalSec, compact = false) {
@@ -514,14 +578,6 @@ function formaterTemps(totalSec, compact = false) {
   return parts.join(compact ? '' : ' ');
 }
 
-function formaterChrono(sec) {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-  const pad = n => String(n).padStart(2, '0');
-  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
-}
-
 function calculerTempsCible(maxSec, mode) {
   if (mode === 'fixed') return maxSec;
   const u = Math.random();
@@ -530,7 +586,7 @@ function calculerTempsCible(maxSec, mode) {
 }
 
 function toggleFormInputs(disabled) {
-  ['showStopwatch', 'probDist'].forEach(id => $(id).disabled = disabled);
+  $('probDist').disabled = disabled;
   if (disabled) {
     $('surpriseFreq').disabled = true;
     $('buySection').style.display = $('bonusInfo').style.display = 'none';
@@ -598,12 +654,10 @@ function demarrerSession() {
   $('actionBtn').style.display = 'flex';
 
   toggleFormInputs(true);
-  toggleChronoDisplay();
 
   const btn = $('actionBtn');
   btn.textContent = "ABANDONNER";
   btn.className = "stop";
-  $('stopwatch').textContent = formaterChrono(0);
 
   clearInterval(masterInterval);
   masterInterval = setInterval(moteurTemps, 200);
@@ -616,7 +670,6 @@ function moteurTemps() {
   if (currentSec <= elapsedSeconds) return;
 
   elapsedSeconds = currentSec;
-  $('stopwatch').textContent = formaterChrono(elapsedSeconds);
 
   if (elapsedSeconds >= targetSeconds) {
     clearInterval(masterInterval);
@@ -692,15 +745,10 @@ $('probDist').addEventListener('change', () => {
   gererChangementDistribution();
   sauvegarderParametres();
 });
-$('showStopwatch').addEventListener('change', () => {
-  toggleChronoDisplay();
-  sauvegarderParametres();
-});
 
 // Initialisation
 chargerParametres();
 gererChangementDistribution();
-toggleChronoDisplay();
 rafraichirAffichageStats();
 actualiserBoutonRecommencer();
 initialiserAuth();

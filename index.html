@@ -10,36 +10,33 @@
 </head>
 <body>
 
-  <!-- Modale d'authentification -->
-  <div id="authModal" class="hidden modal-overlay">
-    <div class="modal-card">
-      <h3 id="modalTitle">Connexion</h3>
-      <input type="text" id="modalUsername" placeholder="Nom d'utilisateur" autocomplete="username">
-      <input type="password" id="modalPassword" placeholder="Mot de passe" autocomplete="current-password">
-      <div class="modal-buttons">
-        <button class="btn-secondary" id="btnModalSubmit">Valider</button>
-        <button class="btn-secondary" id="btnModalCancel">Annuler</button>
-      </div>
+<!-- Modale d'authentification -->
+<div id="authModal" class="hidden modal-overlay">
+  <div class="modal-card">
+    <h3 id="modalTitle">Connexion</h3>
+    <input type="email" id="modalEmail" placeholder="Adresse e-mail" autocomplete="email">
+    <input type="text" id="modalUsername" placeholder="Pseudo d'affichage" autocomplete="nickname" maxlength="25">
+    <input type="password" id="modalPassword" placeholder="Mot de passe" autocomplete="current-password">
+    <div class="modal-buttons">
+      <button class="btn-secondary" id="btnModalSubmit">Valider</button>
+      <button class="btn-secondary" id="btnModalCancel">Annuler</button>
     </div>
   </div>
+</div>
 
-  <!-- Cadre de synchronisation placé tout en haut -->
+  <!-- Cadre de synchronisation -->
   <div id="cloudSyncStatus" class="sync-card">
     ● MODE LOCAL (NON CONNECTÉ)
   </div>
 
-  <!-- Bouton Créer un compte -->
-  <div class="backup-actions" id="signupSection">
-    <button class="btn-secondary" id="btnRegister">Créer un compte</button>
-  </div>
-
-  <!-- Barre Connexion / Déconnexion et statut -->
-  <div class="backup-actions">
+  <!-- Barre d'authentification dynamique -->
+  <div class="backup-actions" id="authBar">
     <button class="btn-secondary" id="btnLogin">Connexion</button>
+    <button class="btn-secondary" id="btnRegister">Créer un compte</button>
     <button class="btn-secondary hidden" id="btnLogout">Déconnexion</button>
-    <button class="btn-secondary" id="btnUserStatus" disabled>Non connecté</button>
   </div>
 
+  <!-- Statistiques -->
   <div class="unified-stats-card card">
     <div class="stats-header">
       <div class="stat-box">
@@ -62,16 +59,9 @@
     <button id="btnBuyStreak">Acheter le streak</button>
   </div>
 
-  <div class="config-card card">
+  <!-- Contrôles surprises (affiché uniquement en mode durée fixe) -->
+  <div class="config-card card hidden" id="rowSurpriseCard">
     <div class="config-row">
-      <span class="row-label">Tirage</span>
-      <select id="probDist">
-        <option value="fixed">Durée fixe (Palier)</option>
-        <option value="linear" selected>Linéaire (vers palier)</option>
-        <option value="uniform">Uniforme (classique)</option>
-      </select>
-    </div>
-    <div class="config-row" id="rowSurprise">
       <span class="row-label">Contrôles</span>
       <select id="surpriseFreq">
         <option value="0">Aucun (0 %)</option>
@@ -81,13 +71,15 @@
         <option value="0.0333">Intense (~1 / 30 s)</option>
       </select>
     </div>
-    <div class="config-row">
-      <span class="row-label">Chrono</span>
-      <label class="checkbox-label">
-        <input type="checkbox" id="showStopwatch" checked>
-        <span>Afficher le temps</span>
-      </label>
-    </div>
+  </div>
+
+  <!-- Sélecteur de tirage pleine largeur juste au-dessus du bouton d'action -->
+  <div class="mode-select-container">
+    <select id="probDist" class="full-width-select">
+      <option value="linear" selected>Tirage : Linéaire (vers palier)</option>
+      <option value="fixed">Tirage : Durée fixe (Palier)</option>
+      <option value="uniform">Tirage : Uniforme (classique)</option>
+    </select>
   </div>
 
   <div id="rewardChoiceSection">
@@ -96,7 +88,6 @@
   </div>
 
   <button id="actionBtn">COMMENCER</button>
-  <div id="stopwatch">00:00</div>
 
   <script src="app.js"></script>
 </body>
