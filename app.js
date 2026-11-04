@@ -1,4 +1,44 @@
+// --- CONFIGURATION SUPABASE ---
+const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || "https://esfnsfjmbfmlqihnhzyu.supabase.co";
+const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || "sb_publishable_xhIks927TYl0cvBmlDqQkQ_5wkEbmZv";
+
+const supabaseClient = (window.supabase && SUPABASE_URL !== "VOTRE_SUPABASE_URL_ICI")
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+let currentUser = null;
+let authMode = "login";
+let isCloudSynced = false;
+
 const $ = id => document.getElementById(id);
+
+// --- INDICATEUR D'ÉTAT DE SYNCHRONISATION (NOIR & BLANC DANS CADRE) ---
+function majIndicateurSync(etat, message) {
+  const el = $('cloudSyncStatus');
+  if (!el) return;
+  switch (etat) {
+    case 'saving':
+      el.textContent = "⟳ ENREGISTREMENT CLOUD...";
+      break;
+    case 'synced':
+      el.textContent = `● SYNCHRONISÉ (${message || new Date().toLocaleTimeString()})`;
+      break;
+    case 'error':
+      el.textContent = `▲ ERREUR SYNCHRO : ${message ? message.toUpperCase() : "ÉCHEC"}`;
+      break;
+    case 'offline':
+    default:
+      el.textContent = "● MODE LOCAL (NON CONNECTÉ)";
+      break;
+  }
+}
+
+async function hashPassword(password) {
+  const msgBuffer = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 const DURATION_TIERS = [
   { id: "1m",   label: "≥ 1m",   minSec: 60,    rateFull: 0.15, rateSacrifice: 0.12, buyMult: 2.5 },
@@ -43,33 +83,307 @@ function updateStreakData(target, lastKey, streakKey, recordKey, today) {
   target[recordKey] = Math.max(target[streakKey], target[recordKey] || 0);
 }
 
-function chargerDonneesStats() {
+function initialiserStructureStats() {
   const defaut = { lastActiveDate: null, dayStreak: 0, dayStreakRecord: 0, bankSeconds: 0, tiers: {} };
   DURATION_TIERS.forEach(t => defaut.tiers[t.id] = { streak: 0, record: 0, lastDate: null });
+  return defaut;
+}
 
+function initialiserStructureConfig() {
+  return {
+    selectedTierId: "1m",
+    surpriseFreq: "0.011",
+    probDist: "linear",
+    showStopwatch: true
+  };
+}
+
+function parserEtValiderStats(dataBrute) {
+  const defaut = initialiserStructureStats();
+  const data = Object.assign(defaut, dataBrute || {});
+  const today = dateJour();
+
+  if (ecartJours(data.lastActiveDate, today) > 1) data.dayStreak = 0;
+  data.dayStreakRecord = Math.max(data.dayStreak, data.dayStreakRecord || 0);
+
+  DURATION_TIERS.forEach(t => {
+    const tier = data.tiers[t.id] = data.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
+    if (ecartJours(tier.lastDate, today) > 1) tier.streak = 0;
+    tier.record = Math.max(tier.streak, tier.record || 0);
+  });
+  return data;
+}
+
+function chargerDonneesStats() {
   try {
     const raw = localStorage.getItem('meditation_presence_stats');
-    if (!raw) return defaut;
-    const data = Object.assign(defaut, JSON.parse(raw));
-    const today = dateJour();
-
-    if (ecartJours(data.lastActiveDate, today) > 1) data.dayStreak = 0;
-    data.dayStreakRecord = Math.max(data.dayStreak, data.dayStreakRecord || 0);
-
-    DURATION_TIERS.forEach(t => {
-      const tier = data.tiers[t.id] = data.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
-      if (ecartJours(tier.lastDate, today) > 1) tier.streak = 0;
-      tier.record = Math.max(tier.streak, tier.record || 0);
-    });
-    return data;
+    if (!raw) return initialiserStructureStats();
+    return parserEtValiderStats(JSON.parse(raw));
   } catch {
-    return defaut;
+    return initialiserStructureStats();
   }
 }
 
-const enregistrerDonneesStats = data => {
-  try { localStorage.setItem('meditation_presence_stats', JSON.stringify(data)); } catch {}
-};
+// Enregistrement unifié avec synchronisation explicite
+async function sauvegarderVersSupabase(payload) {
+  if (!supabaseClient || !currentUser || !isCloudSynced) return;
+  majIndicateurSync('saving');
+
+  try {
+    const dataToSave = {
+      id: currentUser.id,
+      updated_at: new Date().toISOString(),
+      ...payload
+    };
+
+    const { error } = await supabaseClient
+      .from('user_progress')
+      .upsert(dataToSave, { onConflict: 'id' });
+
+    if (error) throw error;
+    majIndicateurSync('synced');
+  } catch (err) {
+    console.error("Erreur écriture cloud:", err);
+    majIndicateurSync('error', err.message || "Réseau");
+  }
+}
+
+async function enregistrerDonneesStats(data) {
+  try {
+    localStorage.setItem('meditation_presence_stats', JSON.stringify(data));
+  } catch {}
+
+  await sauvegarderVersSupabase({ stats: data });
+}
+
+async function sauvegarderParametres() {
+  const conf = {
+    selectedTierId,
+    surpriseFreq: $('surpriseFreq').value,
+    probDist: $('probDist').value,
+    showStopwatch: $('showStopwatch').checked
+  };
+
+  try {
+    localStorage.setItem('meditation_presence_config', JSON.stringify(conf));
+  } catch {}
+
+  await sauvegarderVersSupabase({ config: conf });
+}
+
+function appliquerParametres(config) {
+  if (!config) return;
+  if (config.selectedTierId && DURATION_TIERS.some(t => t.id === config.selectedTierId)) {
+    selectedTierId = config.selectedTierId;
+  }
+  ['surpriseFreq', 'probDist'].forEach(k => {
+    if (config[k] !== undefined && $(k)) $(k).value = config[k];
+  });
+  if (config.showStopwatch !== undefined) {
+    $('showStopwatch').checked = config.showStopwatch;
+  }
+}
+
+function chargerParametres() {
+  try {
+    const config = JSON.parse(localStorage.getItem('meditation_presence_config') || '{}');
+    appliquerParametres(config);
+  } catch {}
+}
+
+async function synchroniserDepuisCloud() {
+  if (!supabaseClient || !currentUser) {
+    majIndicateurSync('offline');
+    return;
+  }
+
+  majIndicateurSync('saving');
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('user_progress')
+      .select('stats, config')
+      .eq('id', currentUser.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (data && (data.stats || data.config)) {
+      const stats = data.stats ? parserEtValiderStats(data.stats) : initialiserStructureStats();
+      localStorage.setItem('meditation_presence_stats', JSON.stringify(stats));
+
+      const config = data.config || initialiserStructureConfig();
+      localStorage.setItem('meditation_presence_config', JSON.stringify(config));
+      appliquerParametres(config);
+    } else {
+      // Première initialisation du profil
+      const statsVierges = initialiserStructureStats();
+      const configDefaut = initialiserStructureConfig();
+
+      localStorage.setItem('meditation_presence_stats', JSON.stringify(statsVierges));
+      localStorage.setItem('meditation_presence_config', JSON.stringify(configDefaut));
+      appliquerParametres(configDefaut);
+
+      await supabaseClient.from('user_progress').upsert({
+        id: currentUser.id,
+        stats: statsVierges,
+        config: configDefaut,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+    }
+
+    isCloudSynced = true;
+    majIndicateurSync('synced', 'À jour');
+    gererChangementDistribution();
+    toggleChronoDisplay();
+    rafraichirAffichageStats();
+    actualiserBoutonRecommencer();
+  } catch (err) {
+    console.error("Erreur chargement cloud:", err);
+    majIndicateurSync('error', err.message || "Impossible de charger");
+  }
+}
+
+// --- AUTHENTIFICATION ---
+function ouvrirModal(mode) {
+  authMode = mode;
+  if ($('modalTitle')) $('modalTitle').textContent = mode === "register" ? "Créer un compte" : "Connexion";
+  if ($('modalUsername')) $('modalUsername').value = "";
+  if ($('modalPassword')) $('modalPassword').value = "";
+  if ($('authModal')) {
+    $('authModal').classList.remove('hidden');
+    $('modalUsername').focus();
+  }
+}
+
+function fermerModal() {
+  if ($('authModal')) $('authModal').classList.add('hidden');
+}
+
+async function soumettreAuthentification() {
+  if (!supabaseClient) return alert("Supabase non connecté.");
+
+  const username = $('modalUsername').value.trim().toLowerCase();
+  const password = $('modalPassword').value;
+
+  if (!username) return alert("Entrez un nom d'utilisateur.");
+  if (password.length < 4) return alert("Le mot de passe doit comporter au moins 4 caractères.");
+
+  majIndicateurSync('saving');
+  const passHash = await hashPassword(password);
+
+  if (authMode === "register") {
+    const { data: existing } = await supabaseClient
+      .from('app_users')
+      .select('id')
+      .eq('username', username)
+      .maybeSingle();
+
+    if (existing) {
+      majIndicateurSync('offline');
+      return alert("Ce nom d'utilisateur est déjà pris.");
+    }
+
+    const { data: newUser, error } = await supabaseClient
+      .from('app_users')
+      .insert({ username, password_hash: passHash })
+      .select()
+      .single();
+
+    if (error) {
+      majIndicateurSync('error', error.message);
+      return alert("Erreur création : " + error.message);
+    }
+
+    await connecterUtilisateur({ id: newUser.id, username: newUser.username });
+    fermerModal();
+  } else {
+    const { data: user, error } = await supabaseClient
+      .from('app_users')
+      .select('id, username')
+      .eq('username', username)
+      .eq('password_hash', passHash)
+      .maybeSingle();
+
+    if (error || !user) {
+      majIndicateurSync('offline');
+      return alert("Nom d'utilisateur ou mot de passe incorrect.");
+    }
+
+    await connecterUtilisateur({ id: user.id, username: user.username });
+    fermerModal();
+  }
+}
+
+async function connecterUtilisateur(user) {
+  isCloudSynced = false;
+  currentUser = user;
+  localStorage.setItem('antibrainrot_session', JSON.stringify(user));
+  gererEtatSession();
+  await synchroniserDepuisCloud();
+}
+
+function deconnecterUtilisateur() {
+  if (running) {
+    clearInterval(masterInterval);
+    clearTimeout(presenceTimer);
+    running = false;
+    presenceMode = null;
+    pendingVictory = null;
+  }
+
+  isCloudSynced = false;
+  currentUser = null;
+  localStorage.removeItem('antibrainrot_session');
+  localStorage.removeItem('meditation_presence_stats');
+  localStorage.removeItem('meditation_presence_config');
+
+  selectedTierId = "1m";
+  appliquerParametres(initialiserStructureConfig());
+  gererChangementDistribution();
+  toggleChronoDisplay();
+  rafraichirAffichageStats();
+  actualiserBoutonRecommencer();
+  $('stopwatch').textContent = formaterChrono(0);
+  $('rewardChoiceSection').style.display = 'none';
+  $('actionBtn').style.display = 'flex';
+
+  majIndicateurSync('offline');
+  gererEtatSession();
+}
+
+async function initialiserAuth() {
+  try {
+    const saved = localStorage.getItem('antibrainrot_session');
+    if (saved) {
+      currentUser = JSON.parse(saved);
+      gererEtatSession();
+      await synchroniserDepuisCloud();
+      return;
+    }
+  } catch {}
+  majIndicateurSync('offline');
+  gererEtatSession();
+}
+
+function gererEtatSession() {
+  const statusBtn = $('btnUserStatus');
+  const signupSection = $('signupSection');
+
+  if (currentUser) {
+    $('btnLogin').classList.add('hidden');
+    $('btnLogout').classList.remove('hidden');
+    if (signupSection) signupSection.classList.add('hidden'); // Supprime le bloc et sa marge quand on est connecté
+
+    if (statusBtn) statusBtn.textContent = currentUser.username.toUpperCase();
+  } else {
+    $('btnLogin').classList.remove('hidden');
+    $('btnLogout').classList.add('hidden');
+    if (signupSection) signupSection.classList.remove('hidden'); // Réaffiche le bloc quand déconnecté
+
+    if (statusBtn) statusBtn.textContent = "Non connecté";
+  }
+}
 
 const getTierActuel = () => DURATION_TIERS.find(t => t.id === selectedTierId) || DURATION_TIERS[0];
 const getTierCout = t => Math.round(t.minSec * (t.buyMult || 1.2));
@@ -129,7 +443,7 @@ function rafraichirAffichageStats() {
   }
 }
 
-function acheterStreak() {
+async function acheterStreak() {
   if (running || pendingVictory) return;
   const data = chargerDonneesStats();
   const today = dateJour();
@@ -143,51 +457,12 @@ function acheterStreak() {
   const tData = data.tiers[tier.id] = data.tiers[tier.id] || { streak: 0, record: 0, lastDate: null };
   updateStreakData(tData, 'lastDate', 'streak', 'record', today);
 
-  enregistrerDonneesStats(data);
+  await enregistrerDonneesStats(data);
   rafraichirAffichageStats();
   alert(`Streak ${tier.label} acheté avec succès !`);
 }
 
-function exporterSauvegarde() {
-  const blob = new Blob([JSON.stringify({
-    version: 9,
-    dateExport: new Date().toISOString(),
-    config: localStorage.getItem('meditation_presence_config'),
-    stats: localStorage.getItem('meditation_presence_stats')
-  }, null, 2)], { type: "application/json" });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `presence-backup-${dateJour()}.json`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function importerSauvegarde(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (data.stats) localStorage.setItem('meditation_presence_stats', typeof data.stats === 'string' ? data.stats : JSON.stringify(data.stats));
-      if (data.config) localStorage.setItem('meditation_presence_config', typeof data.config === 'string' ? data.config : JSON.stringify(data.config));
-
-      chargerParametres();
-      gererChangementDistribution();
-      toggleChronoDisplay();
-      rafraichirAffichageStats();
-      actualiserBoutonRecommencer();
-      alert("Données importées avec succès.");
-    } catch {
-      alert("Fichier corrompu ou invalide.");
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = "";
-}
-
-function traiterRecompenseSession(choix) {
+async function traiterRecompenseSession(choix) {
   if (!pendingVictory) return;
   const { dureeReelle, targetTier } = pendingVictory;
   const stats = chargerDonneesStats();
@@ -207,7 +482,7 @@ function traiterRecompenseSession(choix) {
     texteResultat = `+${formaterTemps(gain)} ${isSacrifice ? '(SACRIFICE)' : 'SOLDÉ'}`;
   }
 
-  enregistrerDonneesStats(stats);
+  await enregistrerDonneesStats(stats);
   rafraichirAffichageStats();
 
   const tempsTenu = formaterTemps(dureeReelle);
@@ -215,26 +490,6 @@ function traiterRecompenseSession(choix) {
   $('rewardChoiceSection').style.display = 'none';
   $('actionBtn').style.display = 'flex';
   reinitialiserBouton(`GAGNÉ (${tempsTenu})\n${texteResultat}\nRECOMMENCER`);
-}
-
-function sauvegarderParametres() {
-  try {
-    localStorage.setItem('meditation_presence_config', JSON.stringify({
-      selectedTierId,
-      surpriseFreq: $('surpriseFreq').value,
-      probDist: $('probDist').value,
-      showStopwatch: $('showStopwatch').checked
-    }));
-  } catch {}
-}
-
-function chargerParametres() {
-  try {
-    const config = JSON.parse(localStorage.getItem('meditation_presence_config') || '{}');
-    if (config.selectedTierId && DURATION_TIERS.some(t => t.id === config.selectedTierId)) selectedTierId = config.selectedTierId;
-    ['surpriseFreq', 'probDist'].forEach(k => { if (config[k] !== undefined && $(k)) $(k).value = config[k]; });
-    if (config.showStopwatch !== undefined) $('showStopwatch').checked = config.showStopwatch;
-  } catch {}
 }
 
 function gererChangementDistribution() {
@@ -411,10 +666,20 @@ function reinitialiserBouton(label = "COMMENCER") {
   btn.className = "";
 }
 
-// Écouteurs d'événements
-$('btnExport').addEventListener('click', exporterSauvegarde);
-$('btnImport').addEventListener('click', () => $('importFile').click());
-$('importFile').addEventListener('change', importerSauvegarde);
+// Écouteurs d'événements - Authentification
+$('btnRegister').addEventListener('click', () => ouvrirModal('register'));
+$('btnLogin').addEventListener('click', () => ouvrirModal('login'));
+$('btnLogout').addEventListener('click', deconnecterUtilisateur);
+
+if ($('btnModalCancel')) $('btnModalCancel').addEventListener('click', fermerModal);
+if ($('btnModalSubmit')) $('btnModalSubmit').addEventListener('click', soumettreAuthentification);
+if ($('modalPassword')) {
+  $('modalPassword').addEventListener('keydown', e => {
+    if (e.key === 'Enter') soumettreAuthentification();
+  });
+}
+
+// Écouteurs d'événements - Sessions & Récompenses
 $('actionBtn').addEventListener('click', handleClick);
 $('btnBuyStreak').addEventListener('click', acheterStreak);
 
@@ -437,3 +702,4 @@ gererChangementDistribution();
 toggleChronoDisplay();
 rafraichirAffichageStats();
 actualiserBoutonRecommencer();
+initialiserAuth();

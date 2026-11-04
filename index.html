@@ -6,13 +6,38 @@
   <meta name="color-scheme" content="dark">
   <title>ANTI BRAINROTTING</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
+  <!-- Modale d'authentification -->
+  <div id="authModal" class="hidden modal-overlay">
+    <div class="modal-card">
+      <h3 id="modalTitle">Connexion</h3>
+      <input type="text" id="modalUsername" placeholder="Nom d'utilisateur" autocomplete="username">
+      <input type="password" id="modalPassword" placeholder="Mot de passe" autocomplete="current-password">
+      <div class="modal-buttons">
+        <button class="btn-secondary" id="btnModalSubmit">Valider</button>
+        <button class="btn-secondary" id="btnModalCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cadre de synchronisation placé tout en haut -->
+  <div id="cloudSyncStatus" class="sync-card">
+    ● MODE LOCAL (NON CONNECTÉ)
+  </div>
+
+  <!-- Bouton Créer un compte -->
+  <div class="backup-actions" id="signupSection">
+    <button class="btn-secondary" id="btnRegister">Créer un compte</button>
+  </div>
+
+  <!-- Barre Connexion / Déconnexion et statut -->
   <div class="backup-actions">
-    <button class="btn-secondary" id="btnExport">Exporter</button>
-    <button class="btn-secondary" id="btnImport">Importer</button>
-    <input type="file" id="importFile" class="hidden" accept=".json">
+    <button class="btn-secondary" id="btnLogin">Connexion</button>
+    <button class="btn-secondary hidden" id="btnLogout">Déconnexion</button>
+    <button class="btn-secondary" id="btnUserStatus" disabled>Non connecté</button>
   </div>
 
   <div class="unified-stats-card card">
