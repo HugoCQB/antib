@@ -365,7 +365,7 @@ function moteurTemps() {
   if (elapsedSeconds >= targetSeconds) {
     clearInterval(masterInterval);
     running = false;
-    activerCompteARebours('final', 10, "APPUYER!", "NON VALIDÉ");
+    activerCompteARebours('final', 5, "ATTENTION!!!!", "NON VALIDÉ");
     return;
   }
 
@@ -375,7 +375,7 @@ function moteurTemps() {
 
     if (delaiEcoule && pasTropProcheFin && Math.random() < surpriseProbPerSec) {
       pauseStartMs = Date.now();
-      activerCompteARebours('mid', 10, "APPUYER?", "CONTRÔLE MANQUÉ");
+      activerCompteARebours('mid', 5, "ATTENTION????", "CONTRÔLE MANQUÉ");
     }
   }
 }
