@@ -176,8 +176,9 @@ body {
   color: #666;
 }
 
+/* Palier validé : cadre gris identique aux non validés (#666), texte restant en blanc (#fff) */
 .tier-box.completed-today {
-  border-color: #fff;
+  border-color: #666;
   color: #fff;
 }
 

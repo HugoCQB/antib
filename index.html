@@ -10,19 +10,19 @@
 </head>
 <body>
 
-<!-- Modale d'authentification -->
-<div id="authModal" class="hidden modal-overlay">
-  <div class="modal-card">
-    <h3 id="modalTitle">Connexion</h3>
-    <input type="email" id="modalEmail" placeholder="Adresse e-mail" autocomplete="email">
-    <input type="text" id="modalUsername" placeholder="Pseudo d'affichage" autocomplete="nickname" maxlength="25">
-    <input type="password" id="modalPassword" placeholder="Mot de passe" autocomplete="current-password">
-    <div class="modal-buttons">
-      <button class="btn-secondary" id="btnModalSubmit">Valider</button>
-      <button class="btn-secondary" id="btnModalCancel">Annuler</button>
+  <!-- Modale d'authentification et de modification de profil -->
+  <div id="authModal" class="hidden modal-overlay">
+    <div class="modal-card">
+      <h3 id="modalTitle">Connexion</h3>
+      <input type="email" id="modalEmail" placeholder="Adresse e-mail" autocomplete="email">
+      <input type="text" id="modalUsername" placeholder="Pseudo d'affichage" autocomplete="nickname" maxlength="25">
+      <input type="password" id="modalPassword" placeholder="Mot de passe" autocomplete="current-password">
+      <div class="modal-buttons">
+        <button class="btn-secondary" id="btnModalSubmit">Valider</button>
+        <button class="btn-secondary" id="btnModalCancel">Annuler</button>
+      </div>
     </div>
   </div>
-</div>
 
   <!-- Cadre de synchronisation -->
   <div id="cloudSyncStatus" class="sync-card">
@@ -36,13 +36,19 @@
     <button class="btn-secondary hidden" id="btnLogout">Déconnexion</button>
   </div>
 
+  <!-- Actions de gestion de compte (affichées uniquement si connecté) -->
+  <div class="backup-actions hidden" id="userAccountActions">
+    <button class="btn-secondary" id="btnEditUsername">Modifier le pseudo</button>
+    <button class="btn-secondary" id="btnEditPassword">Modifier le mot de passe</button>
+  </div>
+
   <!-- Statistiques -->
   <div class="unified-stats-card card">
     <div class="stats-header">
       <div class="stat-box">
         <span class="stat-label">Série Quotidienne</span>
-        <span class="stat-val" id="statDayStreak">0 j</span>
-        <span class="stat-sub" id="statDayStreakRecord">Record : 0 j</span>
+        <span class="stat-val" id="statDayStreak">0j</span>
+        <span class="stat-sub" id="statDayStreakRecord">Record : 0j</span>
       </div>
       <div class="stat-box">
         <span class="stat-label">Solde Temps</span>

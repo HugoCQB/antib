@@ -7,7 +7,7 @@ const supabaseClient = (window.supabase && SUPABASE_URL !== "VOTRE_SUPABASE_URL_
   : null;
 
 let currentUser = null;
-let authMode = "login";
+let authMode = "login"; // "login", "register", "edit_username", "edit_password"
 let isCloudSynced = false;
 
 const $ = id => document.getElementById(id);
@@ -122,14 +122,14 @@ async function sauvegarderVersSupabase(payload) {
 
   try {
     const dataToSave = {
-      id: currentUser.id,
       updated_at: new Date().toISOString(),
       ...payload
     };
 
     const { error } = await supabaseClient
       .from('user_progress')
-      .upsert(dataToSave, { onConflict: 'id' });
+      .update(dataToSave)
+      .eq('id', currentUser.id);
 
     if (error) throw error;
     majIndicateurSync('synced');
@@ -195,8 +195,8 @@ async function synchroniserDepuisCloud() {
 
     if (error) throw error;
 
-    if (data && (data.stats || data.config)) {
-      const stats = data.stats ? parserEtValiderStats(data.stats) : initialiserStructureStats();
+    if (data && data.stats && Object.keys(data.stats).length > 0) {
+      const stats = parserEtValiderStats(data.stats);
       localStorage.setItem('meditation_presence_stats', JSON.stringify(stats));
 
       const config = data.config || initialiserStructureConfig();
@@ -210,12 +210,14 @@ async function synchroniserDepuisCloud() {
       localStorage.setItem('meditation_presence_config', JSON.stringify(configDefaut));
       appliquerParametres(configDefaut);
 
-      await supabaseClient.from('user_progress').upsert({
-        id: currentUser.id,
-        stats: statsVierges,
-        config: configDefaut,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
+      await supabaseClient
+        .from('user_progress')
+        .update({
+          stats: statsVierges,
+          config: configDefaut,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentUser.id);
     }
 
     isCloudSynced = true;
@@ -229,7 +231,7 @@ async function synchroniserDepuisCloud() {
   }
 }
 
-// --- MODALE & AUTHENTIFICATION (OPTION B : SUPABASE AUTH NATIF) ---
+// --- MODALE & AUTHENTIFICATION ---
 
 function fermerModal() {
   if ($('authModal')) $('authModal').classList.add('hidden');
@@ -238,31 +240,44 @@ function fermerModal() {
 function ouvrirModal(mode) {
   authMode = mode;
   const isRegister = mode === "register";
-
-  if ($('modalTitle')) {
-    $('modalTitle').textContent = isRegister ? "Créer un compte" : "Connexion";
-  }
+  const isEditUser = mode === "edit_username";
+  const isEditPass = mode === "edit_password";
 
   const emailInput = $('modalEmail');
   const userInput = $('modalUsername');
   const passInput = $('modalPassword');
 
+  if ($('modalTitle')) {
+    if (isRegister) $('modalTitle').textContent = "Créer un compte";
+    else if (isEditUser) $('modalTitle').textContent = "Modifier le pseudo";
+    else if (isEditPass) $('modalTitle').textContent = "Modifier le mot de passe";
+    else $('modalTitle').textContent = "Connexion";
+  }
+
+  // Affichage dynamique des champs selon l'action
   if (emailInput) {
     emailInput.value = "";
     emailInput.placeholder = "Adresse e-mail";
+    emailInput.classList.toggle('hidden', isEditUser || isEditPass);
   }
 
   if (userInput) {
-    userInput.value = "";
-    userInput.classList.toggle('hidden', !isRegister);
+    userInput.value = isEditUser ? (currentUser?.username || "") : "";
+    userInput.classList.toggle('hidden', mode === "login" || isEditPass);
     userInput.placeholder = "Pseudo d'affichage";
   }
 
-  if (passInput) passInput.value = "";
+  if (passInput) {
+    passInput.value = "";
+    passInput.classList.toggle('hidden', isEditUser);
+    passInput.placeholder = isEditPass ? "Nouveau mot de passe" : "Mot de passe";
+  }
 
   if ($('authModal')) {
     $('authModal').classList.remove('hidden');
-    if (emailInput) emailInput.focus();
+    if (isEditUser && userInput) userInput.focus();
+    else if (isEditPass && passInput) passInput.focus();
+    else if (emailInput && !emailInput.classList.contains('hidden')) emailInput.focus();
   }
 }
 
@@ -270,10 +285,71 @@ async function soumettreAuthentification() {
   if (!supabaseClient) return alert("Supabase non connecté.");
 
   const isRegister = authMode === "register";
+  const isEditUser = authMode === "edit_username";
+  const isEditPass = authMode === "edit_password";
+
   const email = $('modalEmail') ? $('modalEmail').value.trim().toLowerCase() : "";
   const username = $('modalUsername') ? $('modalUsername').value.trim() : "";
   const password = $('modalPassword') ? $('modalPassword').value : "";
 
+  majIndicateurSync('saving');
+
+  // --- 1. MODIFICATION DU PSEUDO ---
+  if (isEditUser) {
+    if (!currentUser) return;
+    if (username.length < 2 || username.length > 25) {
+      majIndicateurSync('synced');
+      return alert("Le pseudo doit contenir entre 2 et 25 caractères.");
+    }
+
+    // Mise à jour de la table profiles
+    const { error: profileError } = await supabaseClient
+      .from('profiles')
+      .update({ username: username })
+      .eq('id', currentUser.id);
+
+    if (profileError) {
+      majIndicateurSync('error', profileError.message);
+      return alert("Erreur lors de la modification du pseudo : " + profileError.message);
+    }
+
+    // Mise à jour des métadonnées auth
+    await supabaseClient.auth.updateUser({
+      data: { username: username }
+    });
+
+    currentUser.username = username;
+    gererEtatSession();
+    fermerModal();
+    majIndicateurSync('synced', 'Pseudo mis à jour');
+    alert("Pseudo modifié avec succès !");
+    return;
+  }
+
+  // --- 2. MODIFICATION DU MOT DE PASSE ---
+  if (isEditPass) {
+    if (!currentUser) return;
+    if (password.length < 6) {
+      majIndicateurSync('synced');
+      return alert("Le nouveau mot de passe doit comporter au moins 6 caractères.");
+    }
+
+    const { error: passError } = await supabaseClient.auth.updateUser({
+      password: password
+    });
+
+    if (passError) {
+      majIndicateurSync('error', passError.message);
+      return alert("Erreur lors de la modification du mot de passe : " + passError.message);
+    }
+
+    fermerModal();
+    majIndicateurSync('synced', 'Mot de passe mis à jour');
+    alert("Mot de passe modifié avec succès !");
+    return;
+  }
+
+  // --- 3. INSCRIPTION & CONNEXION ---
   if (password.length < 6) {
     return alert("Le mot de passe doit comporter au moins 6 caractères (requis par Supabase).");
   }
@@ -283,21 +359,17 @@ async function soumettreAuthentification() {
     return alert("Veuillez renseigner une adresse e-mail valide.");
   }
 
-  majIndicateurSync('saving');
-
   if (isRegister) {
-    // 1. Validation du pseudo
     if (username.length < 2 || username.length > 25) {
       majIndicateurSync('offline');
       return alert("Le pseudo doit contenir entre 2 et 25 caractères.");
     }
 
-    // 2. Inscription native Supabase Auth
     const { data: authData, error: authError } = await supabaseClient.auth.signUp({
       email,
       password,
       options: {
-        data: { username } // Stocké directement dans les métadonnées de l'utilisateur
+        data: { username }
       }
     });
 
@@ -312,30 +384,12 @@ async function soumettreAuthentification() {
       return alert("Vérifiez vos e-mails pour confirmer l'inscription.");
     }
 
-    // 3. Création du profil public
-    await supabaseClient.from('profiles').upsert({
-      id: user.id,
-      username: username
-    });
-
-    // 4. Initialisation des progrès
-    const statsVierges = initialiserStructureStats();
-    const configDefaut = initialiserStructureConfig();
-
-    await supabaseClient.from('user_progress').upsert({
-      id: user.id,
-      stats: statsVierges,
-      config: configDefaut,
-      updated_at: new Date().toISOString()
-    });
-
     currentUser = { id: user.id, username };
     gererEtatSession();
     fermerModal();
     await synchroniserDepuisCloud();
 
   } else {
-    // Connexion native Supabase Auth
     const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
       email,
       password
@@ -348,7 +402,6 @@ async function soumettreAuthentification() {
 
     const user = authData.user;
 
-    // Récupération du pseudo dans profiles (ou métadonnées de secours)
     let pseudo = user.user_metadata?.username;
     if (!pseudo) {
       const { data: profile } = await supabaseClient
@@ -403,7 +456,6 @@ async function initialiserAuth() {
     return;
   }
 
-  // Écouteur en direct de l'état d'authentification Supabase
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
       let pseudo = session.user.user_metadata?.username;
@@ -426,7 +478,6 @@ async function initialiserAuth() {
     }
   });
 
-  // Récupération de la session existante au chargement
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
     majIndicateurSync('offline');
@@ -438,16 +489,19 @@ function gererEtatSession() {
   const btnLogin = $('btnLogin');
   const btnRegister = $('btnRegister');
   const btnLogout = $('btnLogout');
+  const userAccountActions = $('userAccountActions');
 
   if (currentUser) {
     btnLogin.classList.add('hidden');
     btnRegister.classList.add('hidden');
     btnLogout.classList.remove('hidden');
     btnLogout.textContent = `DÉCONNEXION (${(currentUser.username || '').toUpperCase()})`;
+    if (userAccountActions) userAccountActions.classList.remove('hidden');
   } else {
     btnLogin.classList.remove('hidden');
     btnRegister.classList.remove('hidden');
     btnLogout.classList.add('hidden');
+    if (userAccountActions) userAccountActions.classList.add('hidden');
   }
 }
 
@@ -720,16 +774,25 @@ function reinitialiserBouton(label = "COMMENCER") {
   btn.className = "";
 }
 
-// Écouteurs d'événements - Authentification
+// Écouteurs d'événements - Authentification & Profil
 $('btnRegister').addEventListener('click', () => ouvrirModal('register'));
 $('btnLogin').addEventListener('click', () => ouvrirModal('login'));
 $('btnLogout').addEventListener('click', deconnecterUtilisateur);
+
+// Nouveaux écouteurs de modification de compte
+$('btnEditUsername').addEventListener('click', () => ouvrirModal('edit_username'));
+$('btnEditPassword').addEventListener('click', () => ouvrirModal('edit_password'));
 
 if ($('btnModalCancel')) $('btnModalCancel').addEventListener('click', fermerModal);
 if ($('btnModalSubmit')) $('btnModalSubmit').addEventListener('click', soumettreAuthentification);
 if ($('modalPassword')) {
   $('modalPassword').addEventListener('keydown', e => {
     if (e.key === 'Enter') soumettreAuthentification();
+  });
+}
+if ($('modalUsername')) {
+  $('modalUsername').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && authMode === 'edit_username') soumettreAuthentification();
   });
 }
 
