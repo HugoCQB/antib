@@ -61,7 +61,7 @@ function updateSyncStatus(msg, isSuccess = false) {
 function updateSyncKeyUI() {
   const el = $('syncKeyLabel');
   if (!el) return;
-  el.textContent = syncKey ? `CLÉ : "CLÉ : CRÉATION...";
+  el.textContent = syncKey ? `CLÉ` : "CLÉ : CRÉATION...";
 }
 
 function genererNouvelleCle() {
