@@ -21,15 +21,13 @@ const DURATION_TIERS = [
   { id: "6h",   label: "≥ 6h",   minSec: 21600, rateFull: 0.68, rateSacrifice: 0.26, buyMult: 1.1 }
 ];
 
+const SURPRISE_CHANCE_PER_SEC = 1/10;
+
 let selectedTierId = "1m", running = false, presenceMode = null;
 let targetSeconds = 0, elapsedSeconds = 0, pauseOffsetMs = 0, pauseStartMs = 0, startTime = 0;
 let masterInterval = null, presenceTimer = null;
 let pendingVictory = null;
 
-// File ordonnée des secondes cibles précalculées
-let scheduledSurprises = [];
-
-// Helpers & Storage
 const dateJour = () => new Date().toISOString().slice(0, 10);
 const ecartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
 const storageGet = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) || def; } catch { return def; } };
@@ -70,22 +68,20 @@ const chargerDonneesStats = () => parserEtValiderStats(storageGet('meditation_pr
 const enregistrerDonneesStats = data => storageSet('meditation_presence_stats', data);
 
 function sauvegarderParametres() {
-  storageSet('meditation_presence_config', { selectedTierId, surpriseFreq: $('surpriseFreq').value });
+  storageSet('meditation_presence_config', { selectedTierId });
 }
 
 function chargerParametres() {
   const conf = storageGet('meditation_presence_config', {});
   if (DURATION_TIERS.some(t => t.id === conf.selectedTierId)) selectedTierId = conf.selectedTierId;
-  if (conf.surpriseFreq !== undefined && $('surpriseFreq')) $('surpriseFreq').value = conf.surpriseFreq;
 }
 
-// Import / Export
 function exporterDonneesJSON() {
   const blob = new Blob([JSON.stringify({
     version: 1,
     dateExport: new Date().toISOString(),
     stats: chargerDonneesStats(),
-    config: { selectedTierId, surpriseFreq: $('surpriseFreq').value }
+    config: { selectedTierId }
   }, null, 2)], { type: "application/json" });
 
   const a = document.createElement("a");
@@ -113,7 +109,6 @@ function gererFichierImport(e) {
       enregistrerDonneesStats(parserEtValiderStats(payload.stats));
       if (payload.config) {
         if (DURATION_TIERS.some(t => t.id === payload.config.selectedTierId)) selectedTierId = payload.config.selectedTierId;
-        if (payload.config.surpriseFreq !== undefined) $('surpriseFreq').value = payload.config.surpriseFreq;
         sauvegarderParametres();
       }
       rafraichirAffichageStats();
@@ -128,7 +123,6 @@ function gererFichierImport(e) {
   reader.readAsText(file);
 }
 
-// Métier & Affichage
 const getTierActuel = () => DURATION_TIERS.find(t => t.id === selectedTierId) || DURATION_TIERS[0];
 const getTierCout = t => Math.round(t.minSec * t.buyMult);
 
@@ -249,7 +243,6 @@ function formaterTemps(totalSec, compact = false) {
 }
 
 function toggleFormInputs(disabled) {
-  $('surpriseFreq').disabled = disabled;
   if (disabled) $('buySection').style.display = $('bonusInfo').style.display = 'none';
   else rafraichirAffichageStats();
 }
@@ -289,54 +282,12 @@ function handleClick() {
   }
 }
 
-/**
- * Découpe la session en tranches égales et tire une seconde uniforme par tranche.
- * Seule contrainte : un contrôle ne peut pas survenir à la même seconde qu'un autre.
- */
-function genererControlesParFenetres(totalSec, freqVal) {
-  if (freqVal <= 0 || totalSec <= 0) return [];
-
-  const fenetreSec = Math.round(1 / freqVal);
-  const instansPris = new Set();
-  const liste = [];
-
-  for (let debutFenetre = 0; debutFenetre < totalSec; debutFenetre += fenetreSec) {
-    const finFenetre = Math.min(debutFenetre + fenetreSec, totalSec);
-    const minSec = debutFenetre;
-    const maxSec = finFenetre - 1;
-
-    if (minSec <= maxSec) {
-      let instant = Math.floor(minSec + Math.random() * (maxSec - minSec + 1));
-      
-      // En cas de collision rarissime sur la même seconde, on décale
-      if (instansPris.has(instant)) {
-        if (instant + 1 < totalSec && !instansPris.has(instant + 1)) {
-          instant++;
-        } else if (instant - 1 >= 0 && !instansPris.has(instant - 1)) {
-          instant--;
-        }
-      }
-
-      if (!instansPris.has(instant)) {
-        instansPris.add(instant);
-        liste.push(instant);
-      }
-    }
-  }
-
-  // Tri chronologique au cas où un décalage a été appliqué
-  return liste.sort((a, b) => a - b);
-}
-
 function demarrerSession() {
   sauvegarderParametres();
   targetSeconds = getTierActuel().minSec;
   elapsedSeconds = pauseOffsetMs = 0;
   startTime = Date.now();
   presenceMode = pendingVictory = null;
-
-  const freqVal = parseFloat($('surpriseFreq').value) || 0;
-  scheduledSurprises = genererControlesParFenetres(targetSeconds, freqVal);
 
   running = true;
   setModeRecompense(false);
@@ -351,20 +302,22 @@ function moteurTemps() {
 
   const currentSec = Math.floor((Date.now() - startTime - pauseOffsetMs) / 1000);
   if (currentSec <= elapsedSeconds) return;
-  elapsedSeconds = currentSec;
 
-  if (elapsedSeconds >= targetSeconds) {
-    clearInterval(masterInterval);
-    running = false;
-    activerCompteARebours('final', 5, "ATTENTION!!!!", "NON VALIDÉ");
-    return;
-  }
+  while (elapsedSeconds < currentSec && running && presenceMode === null) {
+    elapsedSeconds++;
 
-  // Déclenchement dès que la seconde cible programmée est atteinte
-  if (scheduledSurprises.length > 0 && elapsedSeconds >= scheduledSurprises[0]) {
-    scheduledSurprises.shift();
-    pauseStartMs = Date.now();
-    activerCompteARebours('mid', 5, "ATTENTION????", "CONTRÔLE MANQUÉ");
+    if (elapsedSeconds >= targetSeconds) {
+      clearInterval(masterInterval);
+      running = false;
+      activerCompteARebours('final', 5, "ATTENTION!!!!", "NON VALIDÉ");
+      return;
+    }
+
+    if (Math.random() < SURPRISE_CHANCE_PER_SEC) {
+      pauseStartMs = Date.now();
+      activerCompteARebours('mid', 5, "ATTENTION???", "CONTRÔLE MANQUÉ");
+      return;
+    }
   }
 }
 
@@ -379,7 +332,6 @@ function activerCompteARebours(mode, seconds, symbol, failReason) {
 
 function declarerEchec(raison = "NON VALIDÉ") {
   presenceMode = pendingVictory = null;
-  scheduledSurprises = [];
   running = false;
   clearInterval(masterInterval);
   clearTimeout(presenceTimer);
@@ -387,7 +339,6 @@ function declarerEchec(raison = "NON VALIDÉ") {
   setBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}\nRECOMMENCER`);
 }
 
-// Événements
 $('btnExport').addEventListener('click', exporterDonneesJSON);
 $('btnImport').addEventListener('click', declencherImportation);
 $('fileInputImport').addEventListener('change', gererFichierImport);
@@ -395,9 +346,7 @@ $('actionBtn').addEventListener('click', handleClick);
 $('btnBuyStreak').addEventListener('click', acheterStreak);
 $('btnChooseStreak').addEventListener('click', () => traiterRecompenseSession('streak'));
 $('btnChooseBank').addEventListener('click', () => traiterRecompenseSession('bank_half'));
-$('surpriseFreq').addEventListener('change', sauvegarderParametres);
 
-// Initialisation
 chargerParametres();
 rafraichirAffichageStats();
 actualiserBoutonRecommencer();

@@ -9,14 +9,12 @@
 </head>
 <body>
 
-  <!-- Barre d'import / export de sauvegarde JSON -->
   <div class="backup-actions">
     <button class="btn-secondary" id="btnExport">Exporter</button>
     <button class="btn-secondary" id="btnImport">Importer</button>
     <input type="file" id="fileInputImport" accept=".json" class="hidden">
   </div>
 
-  <!-- Statistiques -->
   <div class="unified-stats-card card">
     <div class="stats-header">
       <div class="stat-box">
@@ -37,18 +35,6 @@
 
   <div id="buySection">
     <button id="btnBuyStreak">Acheter le streak</button>
-  </div>
-
-  <!-- Sélecteur de contrôles surprises (toujours visible) -->
-  <div class="mode-select-container" id="rowSurpriseCard">
-    <select id="surpriseFreq" class="full-width-select">
-      <option value="0.0055">Contrôles : Rares (1 / 3 min)</option>
-      <option value="0.011" selected>Contrôles : Modérés (1 / 90 s)</option>
-      <option value="0.020">Contrôles : Fréquents (1 / 50 s)</option>
-      <option value="0.0333">Contrôles : Intenses (1 / 30 s)</option>
-      <option value="0.1">Contrôles : Extrêmes (1 / 10 s)</option>
-      <option value="0.05">Contrôles : Impossible (1 / 5 s)</option>
-    </select>
   </div>
 
   <div id="rewardChoiceSection">

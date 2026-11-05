@@ -19,10 +19,8 @@ body {
   padding: 10px 14px;
 }
 
-/* Socle commun : conteneurs pleine largeur (max 360px) */
 .card,
 .backup-actions,
-.mode-select-container,
 #actionBtn,
 #buySection,
 #bonusInfo,
@@ -31,9 +29,7 @@ body {
   max-width: 360px;
 }
 
-/* Socle commun : éléments encadrés (boutons, sélecteurs, bannières) */
 button,
-select,
 .unified-stats-card,
 #bonusInfo {
   background: #000;
@@ -43,7 +39,6 @@ select,
   font-family: inherit;
 }
 
-/* Socle commun : boutons cliquables */
 button {
   cursor: pointer;
   font-weight: 700;
@@ -51,14 +46,6 @@ button {
   letter-spacing: 0.5px;
 }
 
-select:disabled {
-  border-color: #444;
-  color: #555;
-  -webkit-text-fill-color: #555;
-  cursor: not-allowed;
-}
-
-/* Actions de sauvegarde */
 .backup-actions {
   display: flex;
   justify-content: space-between;
@@ -110,7 +97,6 @@ select:disabled {
   margin-top: 1px;
 }
 
-/* Grille de paliers */
 .tiers-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -158,7 +144,6 @@ select:disabled {
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
 }
 
-/* Bloc sous la carte de stats (Achat ou Déjà validé) : dimensions et socle identiques */
 #bonusInfo,
 #btnBuyStreak {
   width: 100%;
@@ -180,20 +165,17 @@ select:disabled {
   text-align: center;
 }
 
-/* État 1 : Acheter le streak (actif) -> texte blanc */
 #btnBuyStreak {
   color: #fff;
   cursor: pointer;
 }
 
-/* État 2 : Palier déjà validé -> texte blanc, cadre blanc */
 #bonusInfo {
   display: none;
   color: #fff;
   cursor: default;
 }
 
-/* État 3 : Désactivé (solde insuffisant) -> cadre blanc préservé, texte gris */
 #btnBuyStreak:disabled {
   border-color: #fff;
   color: #777;
@@ -208,21 +190,6 @@ select:disabled {
   margin: 0 auto;
 }
 
-/* Menus déroulants */
-.mode-select-container {
-  margin-bottom: 6px;
-}
-
-.full-width-select {
-  width: 100%;
-  padding: 9px 12px;
-  font-size: 0.8rem;
-  text-align: center;
-  outline: none;
-  font-weight: 600;
-}
-
-/* Boutons de choix de récompense */
 #rewardChoiceSection {
   display: none;
   flex-direction: column;
@@ -236,7 +203,6 @@ select:disabled {
   line-height: 1.3;
 }
 
-/* Bouton principal */
 #actionBtn {
   padding: 10px 14px;
   font-size: 0.85rem;
