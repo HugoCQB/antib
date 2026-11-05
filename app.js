@@ -67,13 +67,20 @@ function updateSyncKeyUI() {
 async function changerOuCopierCle() {
   if (running) return;
   const saisie = prompt(
-    "Copiez votre clé pour la coller sur un autre appareil, ou entrez une clé existante :",
+    "Copiez votre clé ou laissez vide pour en régénérer une nouvelle :",
     syncKey || ""
   );
   if (saisie === null) return;
 
   const cleNettoyee = saisie.trim();
-  if (!cleNettoyee) return;
+
+  if (!cleNettoyee) {
+    syncKey = null;
+    localStorage.removeItem("meditation_sync_key");
+    updateSyncKeyUI();
+    await pushToCloud();
+    return;
+  }
 
   syncKey = cleNettoyee;
   localStorage.setItem("meditation_sync_key", syncKey);
@@ -114,7 +121,7 @@ async function pullFromCloud() {
     return;
   }
 
-  if (!syncKey) {
+  if (!syncKey || syncKey.startsWith("ABR-")) {
     await pushToCloud();
     return;
   }
@@ -151,8 +158,8 @@ async function pushToCloud() {
   try {
     const stats = chargerDonneesStats();
 
-    if (!syncKey) {
-      // Création initiale : renvoie { "id": "xxxxx" } dans le corps JSON
+    // Si aucune clé ou si l'ancienne clé factice ABR-... est encore présente
+    if (!syncKey || syncKey.startsWith("ABR-")) {
       const res = await fetch(SYNC_API_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -171,9 +178,9 @@ async function pushToCloud() {
       return;
     }
 
-    // Mise à jour de l'enregistrement existant
+    // Mise à jour de l'enregistrement existant via PUT
     const res = await fetch(`${SYNC_API_ENDPOINT}/${syncKey}`, {
-      method: "POST",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(stats)
     });
