@@ -33,6 +33,7 @@ const PATTERNS = {
 const FIREBASE_DB_URL = "https://antibrainrotting-4f194-default-rtdb.europe-west1.firebasedatabase.app";
 
 let syncKey = localStorage.getItem("meditation_sync_key") || null;
+let currentKeyPassword = localStorage.getItem("meditation_sync_pwd") || "";
 let selectedTierId = "1m", running = false, presenceMode = null;
 let targetSeconds = 0, elapsedSeconds = 0, pauseOffsetMs = 0, pauseStartMs = 0, startTime = 0;
 let masterInterval = null, presenceTimer = null, flickerTimeout = null;
@@ -48,6 +49,17 @@ const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE")
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
 window.addEventListener("pagehide", stopIfRunning);
 
+/* FONCTION UTILITAIRE DE HACHAGE (SHA-256) */
+
+async function hashPassword(str) {
+  if (!str) return null;
+  const buffer = new TextEncoder().encode(str);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /* GESTION DE LA SYNCHRONISATION FIREBASE */
 
 function updateSyncStatus(msg, isSuccess = false) {
@@ -61,7 +73,8 @@ function updateSyncStatus(msg, isSuccess = false) {
 function updateSyncKeyUI() {
   const el = $('syncKeyLabel');
   if (!el) return;
-  el.textContent = syncKey ? `CLÉ` : "CLÉ : CRÉATION...";
+  const isLocked = Boolean(currentKeyPassword);
+  el.textContent = syncKey ? `CLÉ ${isLocked ? "[VERROUILLÉE]" : ""}` : "CLÉ : CRÉATION...";
 }
 
 function genererNouvelleCle() {
@@ -70,23 +83,53 @@ function genererNouvelleCle() {
 
 async function changerOuCopierCle() {
   if (running) return;
-  const saisie = prompt(
-    "Copiez votre clé ou laissez vide pour en régénérer une nouvelle :",
-    syncKey || ""
+
+  const action = prompt(
+    `Clé actuelle : ${syncKey || "Aucune"}\n\n` +
+    `1. Changer ou créer une clé\n` +
+    `2. Définir / modifier le mot de passe de cette clé\n` +
+    `Entrez 1, 2 ou directement une nouvelle clé :`
   );
-  if (saisie === null) return;
 
-  const cleNettoyee = saisie.trim();
+  if (action === null) return;
+  const saisie = action.trim();
 
-  if (!cleNettoyee) {
+  // Option 2 : Verrouiller ou déverrouiller la clé actuelle
+  if (saisie === "2") {
+    if (!syncKey) {
+      alert("Veuillez d'abord générer ou charger une clé.");
+      return;
+    }
+    const nouveauMdp = prompt("Définissez un mot de passe (laissez vide pour retirer le verrou) :");
+    if (nouveauMdp === null) return;
+
+    currentKeyPassword = nouveauMdp.trim();
+    if (currentKeyPassword) {
+      localStorage.setItem("meditation_sync_pwd", currentKeyPassword);
+    } else {
+      localStorage.removeItem("meditation_sync_pwd");
+    }
+    updateSyncKeyUI();
+    await pushToCloud();
+    return;
+  }
+
+  // Option 1 ou saisie directe
+  let nouvelleCle = (saisie === "1") ? (prompt("Entrez la clé :") || "").trim() : saisie;
+
+  if (!nouvelleCle) {
     syncKey = genererNouvelleCle();
+    currentKeyPassword = "";
+    localStorage.removeItem("meditation_sync_pwd");
     localStorage.setItem("meditation_sync_key", syncKey);
     updateSyncKeyUI();
     await pushToCloud();
     return;
   }
 
-  syncKey = cleNettoyee;
+  syncKey = nouvelleCle;
+  currentKeyPassword = "";
+  localStorage.removeItem("meditation_sync_pwd");
   localStorage.setItem("meditation_sync_key", syncKey);
   updateSyncKeyUI();
   await pullFromCloud();
@@ -141,10 +184,35 @@ async function pullFromCloud() {
 
     const payload = await res.json();
 
-    // Première synchronisation pour cette clé : on téléverse l'état local
     if (!payload) {
       await pushToCloud();
       return;
+    }
+
+    // Si la clé distante est protégée par un mot de passe
+    if (payload.passwordHash) {
+      let tentatives = 0;
+      let hashLocal = await hashPassword(currentKeyPassword);
+
+      while (hashLocal !== payload.passwordHash && tentatives < 3) {
+        const saisie = prompt(`La clé ${syncKey} est protégée par un mot de passe :`);
+        if (saisie === null) {
+          updateSyncStatus("ACCÈS REFUSÉ");
+          return;
+        }
+        currentKeyPassword = saisie.trim();
+        hashLocal = await hashPassword(currentKeyPassword);
+        tentatives++;
+      }
+
+      if (hashLocal !== payload.passwordHash) {
+        updateSyncStatus("MDP INCORRECT");
+        alert("Mot de passe incorrect. Données non synchronisées.");
+        return;
+      }
+
+      localStorage.setItem("meditation_sync_pwd", currentKeyPassword);
+      updateSyncKeyUI();
     }
 
     const distantData = parserEtValiderStats(payload);
@@ -171,12 +239,31 @@ async function pushToCloud() {
 
   updateSyncStatus("ENVOI...");
   try {
+    // Vérification du mot de passe distant avant écrasement
+    const checkRes = await fetch(`${FIREBASE_DB_URL}/users/${encodeURIComponent(syncKey)}/passwordHash.json`);
+    if (checkRes.ok) {
+      const distantHash = await checkRes.json();
+      if (distantHash) {
+        const localHash = await hashPassword(currentKeyPassword);
+        if (distantHash !== localHash) {
+          updateSyncStatus("ÉCRITURE REFUSÉE");
+          alert("Impossible d'écrire sur cette clé : mot de passe incorrect.");
+          return;
+        }
+      }
+    }
+
     const stats = chargerDonneesStats();
+    const hash = await hashPassword(currentKeyPassword);
+    const payload = {
+      ...stats,
+      passwordHash: hash || null
+    };
 
     const res = await fetch(`${FIREBASE_DB_URL}/users/${encodeURIComponent(syncKey)}.json`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(stats)
+      body: JSON.stringify(payload)
     });
 
     if (!res.ok) throw new Error(`Mise à jour Firebase échouée: ${res.status}`);
