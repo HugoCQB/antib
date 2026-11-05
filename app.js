@@ -29,12 +29,8 @@ const PATTERNS = {
   final: ["CONFIRMER", "CONFIRMER.", "CONFIRMER.."]
 };
 
-// Configuration du service de synchronisation
-// Remplacez SYNC_BASE_URL et l'en-tête selon votre fournisseur de stockage (ex: JSONbin, KV worker, etc.)
-const SYNC_CONFIG = {
-  baseUrl: "https://api.jsonbin.io/v3/b",
-  apiKey: "$2a$10$ExempleVotreCleSecreteJSONBin" // Optionnel selon le backend choisi
-};
+// Endpoint REST public avec CORS ouvert
+const SYNC_API_URL = "https://jsonblob.com/api/jsonBlob";
 
 let syncKey = localStorage.getItem("meditation_sync_key") || null;
 let selectedTierId = "1m", running = false, presenceMode = null;
@@ -52,34 +48,37 @@ const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE")
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
 window.addEventListener("pagehide", stopIfRunning);
 
-/* GESTION DE LA CLÉ ET DU CLOUD */
-
-function genererCleAleatoire() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let cle = "ABR-";
-  for (let i = 0; i < 4; i++) cle += chars[Math.floor(Math.random() * chars.length)];
-  cle += "-";
-  for (let i = 0; i < 4; i++) cle += chars[Math.floor(Math.random() * chars.length)];
-  return cle;
-}
+/* GESTION DE LA SYNCHRONISATION DISTANTE */
 
 function updateSyncStatus(msg, isSuccess = false) {
   const el = $('syncStatus');
+  if (!el) return;
   el.textContent = `SYNC : ${msg}`;
   el.style.borderColor = isSuccess ? "#fff" : "#555";
   el.style.color = isSuccess ? "#fff" : "#aaa";
 }
 
 function updateSyncKeyUI() {
-  $('syncKeyLabel').textContent = `CLÉ : ${syncKey || "NON DÉFINIE"}`;
+  const el = $('syncKeyLabel');
+  if (!el) return;
+  if (!syncKey) {
+    el.textContent = "CLÉ : CRÉATION...";
+  } else {
+    // Affichage raccourci pour garder une interface propre sur mobile
+    const cleAffichee = syncKey.length > 14 ? `${syncKey.slice(0, 10)}...` : syncKey;
+    el.textContent = `CLÉ : ${cleAffichee}`;
+  }
 }
 
 async function changerOuCopierCle() {
   if (running) return;
-  const nouvelleCle = prompt("Entrez une clé existante pour lier vos appareils, ou laissez celle-ci :", syncKey || "");
-  if (nouvelleCle === null) return;
+  const saisie = prompt(
+    "Copiez votre clé actuelle ou collez celle d'un autre appareil :",
+    syncKey || ""
+  );
+  if (saisie === null) return;
 
-  const cleNettoyee = nouvelleCle.trim().toUpperCase();
+  const cleNettoyee = saisie.trim();
   if (!cleNettoyee) return;
 
   syncKey = cleNettoyee;
@@ -88,7 +87,6 @@ async function changerOuCopierCle() {
   await pullFromCloud();
 }
 
-// Fusionne local et distant en gardant le meilleur score/record et le solde le plus élevé
 function fusionnerDonnees(local, distant) {
   const fusion = { ...local };
   const today = dateJour();
@@ -117,28 +115,31 @@ function fusionnerDonnees(local, distant) {
 }
 
 async function pullFromCloud() {
-  if (!syncKey || !navigator.onLine) {
+  if (!navigator.onLine) {
     updateSyncStatus("HORS LIGNE");
+    return;
+  }
+
+  if (!syncKey) {
+    await pushToCloud();
     return;
   }
 
   updateSyncStatus("CHARGEMENT...");
   try {
-    const res = await fetch(`${SYNC_CONFIG.baseUrl}/${syncKey}`, {
+    const res = await fetch(`${SYNC_API_URL}/${syncKey}`, {
       method: "GET",
-      headers: { "X-Master-Key": SYNC_CONFIG.apiKey }
+      headers: { "Accept": "application/json" }
     });
 
     if (res.status === 404) {
-      // Nouvelle clé : on pousse immédiatement l'état local actuel
       await pushToCloud();
       return;
     }
 
-    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    if (!res.ok) throw new Error(`Status ${res.status}`);
 
-    const result = await res.json();
-    const distantData = parserEtValiderStats(result.record || result);
+    const distantData = parserEtValiderStats(await res.json());
     const localData = chargerDonneesStats();
     const merged = fusionnerDonnees(localData, distantData);
 
@@ -152,21 +153,48 @@ async function pullFromCloud() {
 }
 
 async function pushToCloud() {
-  if (!syncKey || !navigator.onLine) return;
+  if (!navigator.onLine) return;
 
   updateSyncStatus("ENVOI...");
   try {
     const stats = chargerDonneesStats();
-    const res = await fetch(`${SYNC_CONFIG.baseUrl}/${syncKey}`, {
+
+    // Si aucune clé n'existe, on initialise le document sur le serveur (POST)
+    if (!syncKey) {
+      const res = await fetch(SYNC_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(stats)
+      });
+
+      if (!res.ok) throw new Error(`Création échouée: ${res.status}`);
+
+      const locationHeader = res.headers.get("Location") || res.headers.get("x-jsonblob") || "";
+      const nouvelleCle = locationHeader.split("/").pop();
+
+      if (!nouvelleCle) throw new Error("Clé introuvable dans les en-têtes");
+
+      syncKey = nouvelleCle;
+      localStorage.setItem("meditation_sync_key", syncKey);
+      updateSyncKeyUI();
+      updateSyncStatus("SYNCHRONISÉ", true);
+      return;
+    }
+
+    // Si la clé existe déjà, on met à jour le document (PUT)
+    const res = await fetch(`${SYNC_API_URL}/${syncKey}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "X-Master-Key": SYNC_CONFIG.apiKey
+        "Accept": "application/json"
       },
       body: JSON.stringify(stats)
     });
 
-    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    if (!res.ok) throw new Error(`Mise à jour échouée: ${res.status}`);
     updateSyncStatus("SYNCHRONISÉ", true);
   } catch (e) {
     console.error(e);
@@ -467,12 +495,6 @@ function declarerEchec(raison = "NON VALIDÉ") {
   clearTimeout(presenceTimer);
   setModeRecompense(false);
   setBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}\nRECOMMENCER`);
-}
-
-// Initialisation au chargement
-if (!syncKey) {
-  syncKey = genererCleAleatoire();
-  localStorage.setItem("meditation_sync_key", syncKey);
 }
 
 $('btnSyncKey').addEventListener('click', changerOuCopierCle);
