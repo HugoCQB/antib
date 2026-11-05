@@ -9,10 +9,14 @@
 </head>
 <body>
 
-  <div class="backup-actions">
-    <button class="btn-secondary" id="btnExport">Exporter</button>
-    <button class="btn-secondary" id="btnImport">Importer</button>
-    <input type="file" id="fileInputImport" accept=".json" class="hidden">
+  <!-- Cadre Clé de Synchronisation -->
+  <div class="sync-banner" id="btnSyncKey" title="Cliquer pour modifier ou copier la clé">
+    <span id="syncKeyLabel">CLÉ : CHARGEMENT...</span>
+  </div>
+
+  <!-- Cadre Statut de Synchronisation -->
+  <div class="sync-banner" id="syncStatus">
+    SYNC : EN ATTENTE
   </div>
 
   <div class="unified-stats-card card">

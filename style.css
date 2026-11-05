@@ -20,7 +20,7 @@ body {
 }
 
 .card,
-.backup-actions,
+.sync-banner,
 #actionBtn,
 #buySection,
 #bonusInfo,
@@ -31,6 +31,7 @@ body {
 
 button,
 .unified-stats-card,
+.sync-banner,
 #bonusInfo {
   background: #000;
   color: #fff;
@@ -46,17 +47,29 @@ button {
   letter-spacing: 0.5px;
 }
 
-.backup-actions {
+/* Cadres de synchronisation (clé et statut) */
+.sync-banner {
+  height: 38px;
+  margin: 0 auto 6px auto;
+  padding: 0 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 6px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
-.btn-secondary {
-  flex: 1;
-  font-size: 0.68rem;
-  padding: 7px 10px;
+#btnSyncKey {
+  cursor: pointer;
+}
+
+#syncStatus {
+  cursor: default;
+  color: #aaa;
+  border-color: #555;
 }
 
 /* Carte de statistiques */

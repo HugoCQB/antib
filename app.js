@@ -23,27 +23,20 @@ const DURATION_TIERS = [
 
 const SURPRISE_CHANCE_PER_SEC = 1 / 5;
 
-// Chaque chaîne fait exactement 11 caractères pour empêcher toute détection par largeur de bloc
 const PATTERNS = {
-  running: [
-    "ATTENDRE.",
-    "ATTENDRE..",
-    "ATTENDRE..."
-  ],
-  // Contrôle intermédiaire : même rythme, mot différent
-  mid: [
-    "VALIDER..",
-    "VALIDER...",
-    "VALIDER...."
-  ],
-  // Contrôle final
-  final: [
-    "CONFIRMER",
-    "CONFIRMER.",
-    "CONFIRMER.."
-  ]
+  running: ["ATTENDRE.", "ATTENDRE..", "ATTENDRE..."],
+  mid: ["VALIDER..", "VALIDER...", "VALIDER...."],
+  final: ["CONFIRMER", "CONFIRMER.", "CONFIRMER.."]
 };
 
+// Configuration du service de synchronisation
+// Remplacez SYNC_BASE_URL et l'en-tête selon votre fournisseur de stockage (ex: JSONbin, KV worker, etc.)
+const SYNC_CONFIG = {
+  baseUrl: "https://api.jsonbin.io/v3/b",
+  apiKey: "$2a$10$ExempleVotreCleSecreteJSONBin" // Optionnel selon le backend choisi
+};
+
+let syncKey = localStorage.getItem("meditation_sync_key") || null;
 let selectedTierId = "1m", running = false, presenceMode = null;
 let targetSeconds = 0, elapsedSeconds = 0, pauseOffsetMs = 0, pauseStartMs = 0, startTime = 0;
 let masterInterval = null, presenceTimer = null, flickerTimeout = null;
@@ -59,10 +52,132 @@ const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE")
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
 window.addEventListener("pagehide", stopIfRunning);
 
-// Animation asynchrone avec micro-décalages de temps (jitter)
+/* GESTION DE LA CLÉ ET DU CLOUD */
+
+function genererCleAleatoire() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let cle = "ABR-";
+  for (let i = 0; i < 4; i++) cle += chars[Math.floor(Math.random() * chars.length)];
+  cle += "-";
+  for (let i = 0; i < 4; i++) cle += chars[Math.floor(Math.random() * chars.length)];
+  return cle;
+}
+
+function updateSyncStatus(msg, isSuccess = false) {
+  const el = $('syncStatus');
+  el.textContent = `SYNC : ${msg}`;
+  el.style.borderColor = isSuccess ? "#fff" : "#555";
+  el.style.color = isSuccess ? "#fff" : "#aaa";
+}
+
+function updateSyncKeyUI() {
+  $('syncKeyLabel').textContent = `CLÉ : ${syncKey || "NON DÉFINIE"}`;
+}
+
+async function changerOuCopierCle() {
+  if (running) return;
+  const nouvelleCle = prompt("Entrez une clé existante pour lier vos appareils, ou laissez celle-ci :", syncKey || "");
+  if (nouvelleCle === null) return;
+
+  const cleNettoyee = nouvelleCle.trim().toUpperCase();
+  if (!cleNettoyee) return;
+
+  syncKey = cleNettoyee;
+  localStorage.setItem("meditation_sync_key", syncKey);
+  updateSyncKeyUI();
+  await pullFromCloud();
+}
+
+// Fusionne local et distant en gardant le meilleur score/record et le solde le plus élevé
+function fusionnerDonnees(local, distant) {
+  const fusion = { ...local };
+  const today = dateJour();
+
+  fusion.bankSeconds = Math.max(local.bankSeconds || 0, distant.bankSeconds || 0);
+  fusion.dayStreakRecord = Math.max(local.dayStreakRecord || 0, distant.dayStreakRecord || 0);
+
+  if (distant.lastActiveDate === today) {
+    fusion.lastActiveDate = today;
+    fusion.dayStreak = Math.max(local.dayStreak || 0, distant.dayStreak || 0);
+  }
+
+  fusion.tiers = {};
+  DURATION_TIERS.forEach(t => {
+    const locTier = local.tiers?.[t.id] || { streak: 0, record: 0, lastDate: null };
+    const distTier = distant.tiers?.[t.id] || { streak: 0, record: 0, lastDate: null };
+
+    const lastDate = (locTier.lastDate === today || distTier.lastDate === today) ? today : (locTier.lastDate || distTier.lastDate);
+    const streak = Math.max(locTier.streak || 0, distTier.streak || 0);
+    const record = Math.max(locTier.record || 0, distTier.record || 0);
+
+    fusion.tiers[t.id] = { streak, record, lastDate };
+  });
+
+  return fusion;
+}
+
+async function pullFromCloud() {
+  if (!syncKey || !navigator.onLine) {
+    updateSyncStatus("HORS LIGNE");
+    return;
+  }
+
+  updateSyncStatus("CHARGEMENT...");
+  try {
+    const res = await fetch(`${SYNC_CONFIG.baseUrl}/${syncKey}`, {
+      method: "GET",
+      headers: { "X-Master-Key": SYNC_CONFIG.apiKey }
+    });
+
+    if (res.status === 404) {
+      // Nouvelle clé : on pousse immédiatement l'état local actuel
+      await pushToCloud();
+      return;
+    }
+
+    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+
+    const result = await res.json();
+    const distantData = parserEtValiderStats(result.record || result);
+    const localData = chargerDonneesStats();
+    const merged = fusionnerDonnees(localData, distantData);
+
+    enregistrerDonneesStats(merged, false);
+    rafraichirAffichageStats();
+    updateSyncStatus("À JOUR", true);
+  } catch (e) {
+    console.error(e);
+    updateSyncStatus("ERREUR LECTURE");
+  }
+}
+
+async function pushToCloud() {
+  if (!syncKey || !navigator.onLine) return;
+
+  updateSyncStatus("ENVOI...");
+  try {
+    const stats = chargerDonneesStats();
+    const res = await fetch(`${SYNC_CONFIG.baseUrl}/${syncKey}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": SYNC_CONFIG.apiKey
+      },
+      body: JSON.stringify(stats)
+    });
+
+    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    updateSyncStatus("SYNCHRONISÉ", true);
+  } catch (e) {
+    console.error(e);
+    updateSyncStatus("ERREUR ENVOI");
+  }
+}
+
+/* FLICKER & CORE */
+
 function demarrerFlicker() {
   arreterFlicker();
-  
   const tick = () => {
     flickerIndex++;
     let currentList = null;
@@ -75,11 +190,9 @@ function demarrerFlicker() {
       $('actionBtn').textContent = currentList[flickerIndex % currentList.length];
     }
 
-    // Intervalle oscillant entre 250ms et 430ms pour éviter tout automatisme cérébral
     const delay = Math.floor(Math.random() * 180) + 250;
     flickerTimeout = setTimeout(tick, delay);
   };
-
   tick();
 }
 
@@ -118,7 +231,11 @@ function parserEtValiderStats(data = {}) {
 }
 
 const chargerDonneesStats = () => parserEtValiderStats(storageGet('meditation_presence_stats', {}));
-const enregistrerDonneesStats = data => storageSet('meditation_presence_stats', data);
+
+function enregistrerDonneesStats(data, syncDistante = true) {
+  storageSet('meditation_presence_stats', data);
+  if (syncDistante) pushToCloud();
+}
 
 function sauvegarderParametres() {
   storageSet('meditation_presence_config', { selectedTierId });
@@ -127,53 +244,6 @@ function sauvegarderParametres() {
 function chargerParametres() {
   const conf = storageGet('meditation_presence_config', {});
   if (DURATION_TIERS.some(t => t.id === conf.selectedTierId)) selectedTierId = conf.selectedTierId;
-}
-
-function exporterDonneesJSON() {
-  const blob = new Blob([JSON.stringify({
-    version: 1,
-    dateExport: new Date().toISOString(),
-    stats: chargerDonneesStats(),
-    config: { selectedTierId }
-  }, null, 2)], { type: "application/json" });
-
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `anti-brainrotting-backup-${dateJour()}.json`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function declencherImportation() {
-  if (running && !confirm("Une session est en cours. Continuer annulera la session actuelle.")) return;
-  if (running) declarerEchec("SESSION RÉINITIALISÉE PAR IMPORT");
-  $('fileInputImport').click();
-}
-
-function gererFichierImport(e) {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const payload = JSON.parse(ev.target.result);
-      if (!payload?.stats) throw new Error("Format JSON non valide : bloc 'stats' manquant.");
-      enregistrerDonneesStats(parserEtValiderStats(payload.stats));
-      if (payload.config) {
-        if (DURATION_TIERS.some(t => t.id === payload.config.selectedTierId)) selectedTierId = payload.config.selectedTierId;
-        sauvegarderParametres();
-      }
-      rafraichirAffichageStats();
-      actualiserBoutonRecommencer();
-      alert("Progression restaurée avec succès !");
-    } catch (err) {
-      alert("Erreur lors de l'import : " + err.message);
-    } finally {
-      e.target.value = "";
-    }
-  };
-  reader.readAsText(file);
 }
 
 const getTierActuel = () => DURATION_TIERS.find(t => t.id === selectedTierId) || DURATION_TIERS[0];
@@ -399,14 +469,22 @@ function declarerEchec(raison = "NON VALIDÉ") {
   setBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}\nRECOMMENCER`);
 }
 
-$('btnExport').addEventListener('click', exporterDonneesJSON);
-$('btnImport').addEventListener('click', declencherImportation);
-$('fileInputImport').addEventListener('change', gererFichierImport);
+// Initialisation au chargement
+if (!syncKey) {
+  syncKey = genererCleAleatoire();
+  localStorage.setItem("meditation_sync_key", syncKey);
+}
+
+$('btnSyncKey').addEventListener('click', changerOuCopierCle);
 $('actionBtn').addEventListener('click', handleClick);
 $('btnBuyStreak').addEventListener('click', acheterStreak);
 $('btnChooseStreak').addEventListener('click', () => traiterRecompenseSession('streak'));
 $('btnChooseBank').addEventListener('click', () => traiterRecompenseSession('bank_half'));
 
+updateSyncKeyUI();
 chargerParametres();
 rafraichirAffichageStats();
 actualiserBoutonRecommencer();
+
+// Lancement automatique du sync distant
+pullFromCloud();
