@@ -29,8 +29,8 @@ const PATTERNS = {
   final: ["CONFIRMER", "CONFIRMER.", "CONFIRMER.."]
 };
 
-// Endpoint REST public avec CORS ouvert
-const SYNC_API_URL = "https://jsonblob.com/api/jsonBlob";
+// Endpoint public KVdb.io
+const SYNC_BASE_URL = "https://kvdb.io/bucket/anti_brainrotting_v1";
 
 let syncKey = localStorage.getItem("meditation_sync_key") || null;
 let selectedTierId = "1m", running = false, presenceMode = null;
@@ -48,7 +48,16 @@ const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE")
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
 window.addEventListener("pagehide", stopIfRunning);
 
-/* GESTION DE LA SYNCHRONISATION DISTANTE */
+/* GESTION DE LA SYNCHRONISATION DISTANTE (KVdb.io) */
+
+function genererCleAleatoire() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let cle = "ABR-";
+  for (let i = 0; i < 4; i++) cle += chars[Math.floor(Math.random() * chars.length)];
+  cle += "-";
+  for (let i = 0; i < 4; i++) cle += chars[Math.floor(Math.random() * chars.length)];
+  return cle;
+}
 
 function updateSyncStatus(msg, isSuccess = false) {
   const el = $('syncStatus');
@@ -60,14 +69,7 @@ function updateSyncStatus(msg, isSuccess = false) {
 
 function updateSyncKeyUI() {
   const el = $('syncKeyLabel');
-  if (!el) return;
-  if (!syncKey) {
-    el.textContent = "CLÉ : CRÉATION...";
-  } else {
-    // Affichage raccourci pour garder une interface propre sur mobile
-    const cleAffichee = syncKey.length > 14 ? `${syncKey.slice(0, 10)}...` : syncKey;
-    el.textContent = `CLÉ : ${cleAffichee}`;
-  }
+  if (el) el.textContent = `CLÉ : ${syncKey || "NON DÉFINIE"}`;
 }
 
 async function changerOuCopierCle() {
@@ -78,7 +80,7 @@ async function changerOuCopierCle() {
   );
   if (saisie === null) return;
 
-  const cleNettoyee = saisie.trim();
+  const cleNettoyee = saisie.trim().toUpperCase();
   if (!cleNettoyee) return;
 
   syncKey = cleNettoyee;
@@ -121,25 +123,30 @@ async function pullFromCloud() {
   }
 
   if (!syncKey) {
-    await pushToCloud();
-    return;
+    syncKey = genererCleAleatoire();
+    localStorage.setItem("meditation_sync_key", syncKey);
+    updateSyncKeyUI();
   }
 
   updateSyncStatus("CHARGEMENT...");
   try {
-    const res = await fetch(`${SYNC_API_URL}/${syncKey}`, {
-      method: "GET",
-      headers: { "Accept": "application/json" }
-    });
+    const res = await fetch(`${SYNC_BASE_URL}/${syncKey}`);
 
     if (res.status === 404) {
+      // Clé pas encore présente sur KVdb : initialisation directe
       await pushToCloud();
       return;
     }
 
     if (!res.ok) throw new Error(`Status ${res.status}`);
 
-    const distantData = parserEtValiderStats(await res.json());
+    const raw = await res.text();
+    if (!raw) {
+      await pushToCloud();
+      return;
+    }
+
+    const distantData = parserEtValiderStats(JSON.parse(raw));
     const localData = chargerDonneesStats();
     const merged = fusionnerDonnees(localData, distantData);
 
@@ -153,48 +160,18 @@ async function pullFromCloud() {
 }
 
 async function pushToCloud() {
-  if (!navigator.onLine) return;
+  if (!navigator.onLine || !syncKey) return;
 
   updateSyncStatus("ENVOI...");
   try {
     const stats = chargerDonneesStats();
-
-    // Si aucune clé n'existe, on initialise le document sur le serveur (POST)
-    if (!syncKey) {
-      const res = await fetch(SYNC_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(stats)
-      });
-
-      if (!res.ok) throw new Error(`Création échouée: ${res.status}`);
-
-      const locationHeader = res.headers.get("Location") || res.headers.get("x-jsonblob") || "";
-      const nouvelleCle = locationHeader.split("/").pop();
-
-      if (!nouvelleCle) throw new Error("Clé introuvable dans les en-têtes");
-
-      syncKey = nouvelleCle;
-      localStorage.setItem("meditation_sync_key", syncKey);
-      updateSyncKeyUI();
-      updateSyncStatus("SYNCHRONISÉ", true);
-      return;
-    }
-
-    // Si la clé existe déjà, on met à jour le document (PUT)
-    const res = await fetch(`${SYNC_API_URL}/${syncKey}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
+    const res = await fetch(`${SYNC_BASE_URL}/${syncKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(stats)
     });
 
-    if (!res.ok) throw new Error(`Mise à jour échouée: ${res.status}`);
+    if (!res.ok) throw new Error(`Status ${res.status}`);
     updateSyncStatus("SYNCHRONISÉ", true);
   } catch (e) {
     console.error(e);
@@ -495,6 +472,12 @@ function declarerEchec(raison = "NON VALIDÉ") {
   clearTimeout(presenceTimer);
   setModeRecompense(false);
   setBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}\nRECOMMENCER`);
+}
+
+// Initialisation au chargement
+if (!syncKey) {
+  syncKey = genererCleAleatoire();
+  localStorage.setItem("meditation_sync_key", syncKey);
 }
 
 $('btnSyncKey').addEventListener('click', changerOuCopierCle);
