@@ -29,8 +29,8 @@ const PATTERNS = {
   final: ["CONFIRMER", "CONFIRMER.", "CONFIRMER.."]
 };
 
-// API de stockage cloud pour front-end statique (CORS ouvert)
-const SYNC_API_ENDPOINT = "https://api.npoint.io";
+// Endpoint REST officiel Firebase Realtime Database
+const FIREBASE_DB_URL = "https://antibrainrotting-4f194-default-rtdb.europe-west1.firebasedatabase.app";
 
 let syncKey = localStorage.getItem("meditation_sync_key") || null;
 let selectedTierId = "1m", running = false, presenceMode = null;
@@ -48,7 +48,7 @@ const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE")
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
 window.addEventListener("pagehide", stopIfRunning);
 
-/* GESTION DE LA SYNCHRONISATION DISTANTE */
+/* GESTION DE LA SYNCHRONISATION FIREBASE */
 
 function updateSyncStatus(msg, isSuccess = false) {
   const el = $('syncStatus');
@@ -64,6 +64,10 @@ function updateSyncKeyUI() {
   el.textContent = syncKey ? `CLÉ : ${syncKey}` : "CLÉ : CRÉATION...";
 }
 
+function genererNouvelleCle() {
+  return "ABR-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
 async function changerOuCopierCle() {
   if (running) return;
   const saisie = prompt(
@@ -75,8 +79,8 @@ async function changerOuCopierCle() {
   const cleNettoyee = saisie.trim();
 
   if (!cleNettoyee) {
-    syncKey = null;
-    localStorage.removeItem("meditation_sync_key");
+    syncKey = genererNouvelleCle();
+    localStorage.setItem("meditation_sync_key", syncKey);
     updateSyncKeyUI();
     await pushToCloud();
     return;
@@ -121,23 +125,28 @@ async function pullFromCloud() {
     return;
   }
 
-  if (!syncKey || syncKey.startsWith("ABR-")) {
+  if (!syncKey) {
+    syncKey = genererNouvelleCle();
+    localStorage.setItem("meditation_sync_key", syncKey);
+    updateSyncKeyUI();
     await pushToCloud();
     return;
   }
 
   updateSyncStatus("CHARGEMENT...");
   try {
-    const res = await fetch(`${SYNC_API_ENDPOINT}/${syncKey}`);
-
-    if (res.status === 404) {
-      await pushToCloud();
-      return;
-    }
+    const res = await fetch(`${FIREBASE_DB_URL}/users/${encodeURIComponent(syncKey)}.json`);
 
     if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
 
     const payload = await res.json();
+
+    // Première synchronisation pour cette clé : on téléverse l'état local
+    if (!payload) {
+      await pushToCloud();
+      return;
+    }
+
     const distantData = parserEtValiderStats(payload);
     const localData = chargerDonneesStats();
     const merged = fusionnerDonnees(localData, distantData);
@@ -146,7 +155,7 @@ async function pullFromCloud() {
     rafraichirAffichageStats();
     updateSyncStatus("À JOUR", true);
   } catch (e) {
-    console.error("Erreur pull:", e);
+    console.error("Erreur lecture Firebase:", e);
     updateSyncStatus("ERREUR LECTURE");
   }
 }
@@ -154,41 +163,27 @@ async function pullFromCloud() {
 async function pushToCloud() {
   if (!navigator.onLine) return;
 
+  if (!syncKey) {
+    syncKey = genererNouvelleCle();
+    localStorage.setItem("meditation_sync_key", syncKey);
+    updateSyncKeyUI();
+  }
+
   updateSyncStatus("ENVOI...");
   try {
     const stats = chargerDonneesStats();
 
-    // Si aucune clé ou si l'ancienne clé factice ABR-... est encore présente
-    if (!syncKey || syncKey.startsWith("ABR-")) {
-      const res = await fetch(SYNC_API_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(stats)
-      });
-
-      if (!res.ok) throw new Error(`Création échouée: ${res.status}`);
-      const data = await res.json();
-
-      if (!data?.id) throw new Error("Réponse serveur sans identifiant");
-
-      syncKey = data.id;
-      localStorage.setItem("meditation_sync_key", syncKey);
-      updateSyncKeyUI();
-      updateSyncStatus("SYNCHRONISÉ", true);
-      return;
-    }
-
-    // Mise à jour de l'enregistrement existant via PUT
-    const res = await fetch(`${SYNC_API_ENDPOINT}/${syncKey}`, {
+    const res = await fetch(`${FIREBASE_DB_URL}/users/${encodeURIComponent(syncKey)}.json`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(stats)
     });
 
-    if (!res.ok) throw new Error(`Mise à jour échouée: ${res.status}`);
+    if (!res.ok) throw new Error(`Mise à jour Firebase échouée: ${res.status}`);
+
     updateSyncStatus("SYNCHRONISÉ", true);
   } catch (e) {
-    console.error("Erreur push:", e);
+    console.error("Erreur écriture Firebase:", e);
     updateSyncStatus("ERREUR ENVOI");
   }
 }
