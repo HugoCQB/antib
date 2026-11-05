@@ -16,7 +16,7 @@ body {
   justify-content: center;
   min-height: 100vh;
   text-align: center;
-  padding: 15px 21px; /* 10px 14px * 1.5 */
+  padding: 10px 14px;
 }
 
 .card,
@@ -26,7 +26,7 @@ body {
 #bonusInfo,
 #rewardChoiceSection {
   width: 100%;
-  max-width: 540px; /* 360px * 1.5 */
+  max-width: 360px;
 }
 
 button,
@@ -35,8 +35,8 @@ button,
 #bonusInfo {
   background: #000;
   color: #fff;
-  border: 1.5px solid #fff;
-  border-radius: 12px; /* 8px * 1.5 */
+  border: 1px solid #fff;
+  border-radius: 8px;
   font-family: inherit;
 }
 
@@ -44,17 +44,17 @@ button {
   cursor: pointer;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.75px; /* 0.5px * 1.5 */
+  letter-spacing: 0.5px;
 }
 
 /* Cadres de synchronisation (clé et statut) */
 .sync-banner {
-  height: 57px; /* 38px * 1.5 */
-  margin: 0 auto 9px auto; /* 6px * 1.5 */
-  padding: 0 18px; /* 12px * 1.5 */
-  font-size: 1.08rem; /* 0.72rem * 1.5 */
+  height: 38px;
+  margin: 0 auto 6px auto;
+  padding: 0 12px;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.75px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   display: flex;
   align-items: center;
@@ -74,15 +74,15 @@ button {
 
 /* Carte de statistiques */
 .unified-stats-card {
-  margin-bottom: 9px; /* 6px * 1.5 */
-  padding: 12px 15px; /* 8px 10px * 1.5 */
+  margin-bottom: 6px;
+  padding: 8px 10px;
 }
 
 .stats-header {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding-bottom: 9px; /* 6px * 1.5 */
+  padding-bottom: 6px;
 }
 
 .stat-box {
@@ -92,37 +92,37 @@ button {
 }
 
 .stat-label {
-  font-size: 0.98rem; /* 0.65rem * 1.5 */
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 1.5px; /* 1px * 1.5 */
-  margin-bottom: 2px;
+  letter-spacing: 1px;
+  margin-bottom: 1px;
   font-weight: 600;
 }
 
 .stat-val {
-  font-size: 1.58rem; /* 1.05rem * 1.5 */
+  font-size: 1.05rem;
   font-weight: 700;
   font-family: "SF Mono", Monaco, Consolas, monospace;
 }
 
 .stat-sub {
-  font-size: 1.02rem; /* 0.68rem * 1.5 */
-  margin-top: 2px;
+  font-size: 0.68rem;
+  margin-top: 1px;
 }
 
 .tiers-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px; /* 4px * 1.5 */
+  gap: 4px;
   width: 100%;
 }
 
 .tier-box {
   width: 100%;
-  height: 102px; /* 68px * 1.5 */
+  height: 68px;
   background: #000;
-  border: 1.5px solid #555;
-  border-radius: 9px; /* 6px * 1.5 */
+  border: 1px solid #555;
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -141,11 +141,11 @@ button {
   color: inherit;
 }
 
-.tier-label { font-size: 0.93rem; font-weight: 700; } /* 0.62rem * 1.5 */
-.tier-val { font-size: 1.14rem; font-weight: 700; font-family: "SF Mono", Monaco, Consolas, monospace; } /* 0.76rem * 1.5 */
-.tier-rec { font-size: 0.87rem; } /* 0.58rem * 1.5 */
-.tier-mult { font-size: 0.83rem; font-family: "SF Mono", Monaco, Consolas, monospace; } /* 0.55rem * 1.5 */
-.tier-sac { font-size: 0.78rem; font-family: "SF Mono", Monaco, Consolas, monospace; } /* 0.52rem * 1.5 */
+.tier-label { font-size: 0.62rem; font-weight: 700; }
+.tier-val { font-size: 0.76rem; font-weight: 700; font-family: "SF Mono", Monaco, Consolas, monospace; }
+.tier-rec { font-size: 0.58rem; }
+.tier-mult { font-size: 0.55rem; font-family: "SF Mono", Monaco, Consolas, monospace; }
+.tier-sac { font-size: 0.52rem; font-family: "SF Mono", Monaco, Consolas, monospace; }
 
 .tier-box.completed-today {
   color: #fff;
@@ -154,23 +154,23 @@ button {
 
 .tier-box.selected-target {
   border-color: #fff;
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.4); /* 8px * 1.5 */
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
 }
 
 #bonusInfo,
 #btnBuyStreak {
   width: 100%;
-  max-width: 540px; /* 360px * 1.5 */
-  height: 57px; /* 38px * 1.5 */
-  margin: 0 auto 9px auto; /* 6px * 1.5 */
-  padding: 0 18px; /* 12px * 1.5 */
+  max-width: 360px;
+  height: 38px;
+  margin: 0 auto 6px auto;
+  padding: 0 12px;
   background: #000;
-  border: 1.5px solid #fff;
-  border-radius: 12px; /* 8px * 1.5 */
+  border: 1px solid #fff;
+  border-radius: 8px;
   font-family: inherit;
-  font-size: 1.13rem; /* 0.75rem * 1.5 */
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.75px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   display: flex;
   align-items: center;
@@ -198,7 +198,7 @@ button {
 
 #buySection {
   width: 100%;
-  max-width: 540px; /* 360px * 1.5 */
+  max-width: 360px;
   display: none;
   margin: 0 auto;
 }
@@ -206,20 +206,20 @@ button {
 #rewardChoiceSection {
   display: none;
   flex-direction: column;
-  gap: 9px; /* 6px * 1.5 */
-  margin-bottom: 9px; /* 6px * 1.5 */
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .btn-reward {
-  padding: 15px 12px; /* 10px 8px * 1.5 */
-  font-size: 1.14rem; /* 0.76rem * 1.5 */
+  padding: 10px 8px;
+  font-size: 0.76rem;
   line-height: 1.3;
 }
 
 #actionBtn {
-  padding: 15px 21px; /* 10px 14px * 1.5 */
-  font-size: 1.28rem; /* 0.85rem * 1.5 */
-  min-height: 72px; /* 48px * 1.5 */
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  min-height: 48px;
   line-height: 1.3;
   white-space: pre-line;
   touch-action: manipulation;
@@ -227,7 +227,7 @@ button {
   align-items: center;
   justify-content: center;
   font-family: "SF Mono", Monaco, Consolas, "Liberation Mono", monospace;
-  letter-spacing: 1.5px; /* 1px * 1.5 */
+  letter-spacing: 1px;
 }
 
 .hidden {
