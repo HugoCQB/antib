@@ -29,8 +29,8 @@ const PATTERNS = {
   final: ["CONFIRMER", "CONFIRMER.", "CONFIRMER.."]
 };
 
-// Endpoint public KVdb.io
-const SYNC_BASE_URL = "https://kvdb.io/bucket/anti_brainrotting_v1";
+// API de stockage cloud pour front-end statique (CORS ouvert)
+const SYNC_API_ENDPOINT = "https://api.npoint.io";
 
 let syncKey = localStorage.getItem("meditation_sync_key") || null;
 let selectedTierId = "1m", running = false, presenceMode = null;
@@ -48,16 +48,7 @@ const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE")
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
 window.addEventListener("pagehide", stopIfRunning);
 
-/* GESTION DE LA SYNCHRONISATION DISTANTE (KVdb.io) */
-
-function genererCleAleatoire() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let cle = "ABR-";
-  for (let i = 0; i < 4; i++) cle += chars[Math.floor(Math.random() * chars.length)];
-  cle += "-";
-  for (let i = 0; i < 4; i++) cle += chars[Math.floor(Math.random() * chars.length)];
-  return cle;
-}
+/* GESTION DE LA SYNCHRONISATION DISTANTE */
 
 function updateSyncStatus(msg, isSuccess = false) {
   const el = $('syncStatus');
@@ -69,18 +60,19 @@ function updateSyncStatus(msg, isSuccess = false) {
 
 function updateSyncKeyUI() {
   const el = $('syncKeyLabel');
-  if (el) el.textContent = `CLÉ : ${syncKey || "NON DÉFINIE"}`;
+  if (!el) return;
+  el.textContent = syncKey ? `CLÉ : ${syncKey}` : "CLÉ : CRÉATION...";
 }
 
 async function changerOuCopierCle() {
   if (running) return;
   const saisie = prompt(
-    "Copiez votre clé actuelle ou collez celle d'un autre appareil :",
+    "Copiez votre clé pour la coller sur un autre appareil, ou entrez une clé existante :",
     syncKey || ""
   );
   if (saisie === null) return;
 
-  const cleNettoyee = saisie.trim().toUpperCase();
+  const cleNettoyee = saisie.trim();
   if (!cleNettoyee) return;
 
   syncKey = cleNettoyee;
@@ -123,30 +115,23 @@ async function pullFromCloud() {
   }
 
   if (!syncKey) {
-    syncKey = genererCleAleatoire();
-    localStorage.setItem("meditation_sync_key", syncKey);
-    updateSyncKeyUI();
+    await pushToCloud();
+    return;
   }
 
   updateSyncStatus("CHARGEMENT...");
   try {
-    const res = await fetch(`${SYNC_BASE_URL}/${syncKey}`);
+    const res = await fetch(`${SYNC_API_ENDPOINT}/${syncKey}`);
 
     if (res.status === 404) {
-      // Clé pas encore présente sur KVdb : initialisation directe
       await pushToCloud();
       return;
     }
 
-    if (!res.ok) throw new Error(`Status ${res.status}`);
+    if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
 
-    const raw = await res.text();
-    if (!raw) {
-      await pushToCloud();
-      return;
-    }
-
-    const distantData = parserEtValiderStats(JSON.parse(raw));
+    const payload = await res.json();
+    const distantData = parserEtValiderStats(payload);
     const localData = chargerDonneesStats();
     const merged = fusionnerDonnees(localData, distantData);
 
@@ -154,27 +139,49 @@ async function pullFromCloud() {
     rafraichirAffichageStats();
     updateSyncStatus("À JOUR", true);
   } catch (e) {
-    console.error(e);
+    console.error("Erreur pull:", e);
     updateSyncStatus("ERREUR LECTURE");
   }
 }
 
 async function pushToCloud() {
-  if (!navigator.onLine || !syncKey) return;
+  if (!navigator.onLine) return;
 
   updateSyncStatus("ENVOI...");
   try {
     const stats = chargerDonneesStats();
-    const res = await fetch(`${SYNC_BASE_URL}/${syncKey}`, {
+
+    if (!syncKey) {
+      // Création initiale : renvoie { "id": "xxxxx" } dans le corps JSON
+      const res = await fetch(SYNC_API_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(stats)
+      });
+
+      if (!res.ok) throw new Error(`Création échouée: ${res.status}`);
+      const data = await res.json();
+
+      if (!data?.id) throw new Error("Réponse serveur sans identifiant");
+
+      syncKey = data.id;
+      localStorage.setItem("meditation_sync_key", syncKey);
+      updateSyncKeyUI();
+      updateSyncStatus("SYNCHRONISÉ", true);
+      return;
+    }
+
+    // Mise à jour de l'enregistrement existant
+    const res = await fetch(`${SYNC_API_ENDPOINT}/${syncKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(stats)
     });
 
-    if (!res.ok) throw new Error(`Status ${res.status}`);
+    if (!res.ok) throw new Error(`Mise à jour échouée: ${res.status}`);
     updateSyncStatus("SYNCHRONISÉ", true);
   } catch (e) {
-    console.error(e);
+    console.error("Erreur push:", e);
     updateSyncStatus("ERREUR ENVOI");
   }
 }
@@ -472,12 +479,6 @@ function declarerEchec(raison = "NON VALIDÉ") {
   clearTimeout(presenceTimer);
   setModeRecompense(false);
   setBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}\nRECOMMENCER`);
-}
-
-// Initialisation au chargement
-if (!syncKey) {
-  syncKey = genererCleAleatoire();
-  localStorage.setItem("meditation_sync_key", syncKey);
 }
 
 $('btnSyncKey').addEventListener('click', changerOuCopierCle);
