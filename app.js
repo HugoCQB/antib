@@ -22,18 +22,22 @@ const DURATION_TIERS = [
 ];
 
 let selectedTierId = "1m", running = false, presenceMode = null;
-let targetSeconds = 0, elapsedSeconds = 0;
-let pauseOffsetMs = 0, pauseStartMs = 0, startTime = 0;
+let targetSeconds = 0, elapsedSeconds = 0, pauseOffsetMs = 0, pauseStartMs = 0, startTime = 0;
 let masterInterval = null, presenceTimer = null;
-let surpriseProbPerSec = 0, lastSurpriseEndSecond = -999;
 let pendingVictory = null;
+
+// File ordonnée des secondes cibles précalculées
+let scheduledSurprises = [];
+
+// Helpers & Storage
+const dateJour = () => new Date().toISOString().slice(0, 10);
+const ecartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
+const storageGet = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) || def; } catch { return def; } };
+const storageSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error(e); } };
 
 const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE"); };
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
 window.addEventListener("pagehide", stopIfRunning);
-
-const dateJour = () => new Date().toISOString().slice(0, 10);
-const ecartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
 
 function updateStreakData(target, lastKey, streakKey, recordKey, today) {
   if (target[lastKey] !== today) {
@@ -43,161 +47,93 @@ function updateStreakData(target, lastKey, streakKey, recordKey, today) {
   target[recordKey] = Math.max(target[streakKey], target[recordKey] || 0);
 }
 
-function initialiserStructureStats() {
-  const defaut = { lastActiveDate: null, dayStreak: 0, dayStreakRecord: 0, bankSeconds: 0, tiers: {} };
-  DURATION_TIERS.forEach(t => defaut.tiers[t.id] = { streak: 0, record: 0, lastDate: null });
-  return defaut;
-}
+function parserEtValiderStats(data = {}) {
+  const today = dateJour();
+  const tiers = {};
+  DURATION_TIERS.forEach(t => {
+    const raw = (data.tiers && data.tiers[t.id]) || {};
+    const streak = ecartJours(raw.lastDate, today) > 1 ? 0 : (raw.streak || 0);
+    tiers[t.id] = { streak, record: Math.max(streak, raw.record || 0), lastDate: raw.lastDate || null };
+  });
 
-function initialiserStructureConfig() {
+  const dayStreak = ecartJours(data.lastActiveDate, today) > 1 ? 0 : (data.dayStreak || 0);
   return {
-    selectedTierId: "1m",
-    surpriseFreq: "0.011",
-    probDist: "linear"
+    lastActiveDate: data.lastActiveDate || null,
+    dayStreak,
+    dayStreakRecord: Math.max(dayStreak, data.dayStreakRecord || 0),
+    bankSeconds: data.bankSeconds || 0,
+    tiers
   };
 }
 
-function parserEtValiderStats(dataBrute) {
-  const defaut = initialiserStructureStats();
-  const data = Object.assign(defaut, dataBrute || {});
-  const today = dateJour();
-
-  if (ecartJours(data.lastActiveDate, today) > 1) data.dayStreak = 0;
-  data.dayStreakRecord = Math.max(data.dayStreak, data.dayStreakRecord || 0);
-
-  DURATION_TIERS.forEach(t => {
-    const tier = data.tiers[t.id] = data.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
-    if (ecartJours(tier.lastDate, today) > 1) tier.streak = 0;
-    tier.record = Math.max(tier.streak, tier.record || 0);
-  });
-  return data;
-}
-
-function chargerDonneesStats() {
-  try {
-    const raw = localStorage.getItem('meditation_presence_stats');
-    if (!raw) return initialiserStructureStats();
-    return parserEtValiderStats(JSON.parse(raw));
-  } catch {
-    return initialiserStructureStats();
-  }
-}
-
-function enregistrerDonneesStats(data) {
-  try {
-    localStorage.setItem('meditation_presence_stats', JSON.stringify(data));
-  } catch (err) {
-    console.error("Erreur d'écriture dans localStorage:", err);
-  }
-}
+const chargerDonneesStats = () => parserEtValiderStats(storageGet('meditation_presence_stats', {}));
+const enregistrerDonneesStats = data => storageSet('meditation_presence_stats', data);
 
 function sauvegarderParametres() {
-  const conf = {
-    selectedTierId,
-    surpriseFreq: $('surpriseFreq').value,
-    probDist: $('probDist').value
-  };
-
-  try {
-    localStorage.setItem('meditation_presence_config', JSON.stringify(conf));
-  } catch (err) {
-    console.error("Erreur d'enregistrement config:", err);
-  }
-}
-
-function appliquerParametres(config) {
-  if (!config) return;
-  if (config.selectedTierId && DURATION_TIERS.some(t => t.id === config.selectedTierId)) {
-    selectedTierId = config.selectedTierId;
-  }
-  ['surpriseFreq', 'probDist'].forEach(k => {
-    if (config[k] !== undefined && $(k)) $(k).value = config[k];
-  });
+  storageSet('meditation_presence_config', { selectedTierId, surpriseFreq: $('surpriseFreq').value });
 }
 
 function chargerParametres() {
-  try {
-    const config = JSON.parse(localStorage.getItem('meditation_presence_config') || '{}');
-    appliquerParametres(config);
-  } catch {}
+  const conf = storageGet('meditation_presence_config', {});
+  if (DURATION_TIERS.some(t => t.id === conf.selectedTierId)) selectedTierId = conf.selectedTierId;
+  if (conf.surpriseFreq !== undefined && $('surpriseFreq')) $('surpriseFreq').value = conf.surpriseFreq;
 }
 
-// --- SYSTÈME D'IMPORT / EXPORT JSON ---
-
+// Import / Export
 function exporterDonneesJSON() {
-  const donnees = {
+  const blob = new Blob([JSON.stringify({
     version: 1,
     dateExport: new Date().toISOString(),
     stats: chargerDonneesStats(),
-    config: {
-      selectedTierId,
-      surpriseFreq: $('surpriseFreq').value,
-      probDist: $('probDist').value
-    }
-  };
+    config: { selectedTierId, surpriseFreq: $('surpriseFreq').value }
+  }, null, 2)], { type: "application/json" });
 
-  const blob = new Blob([JSON.stringify(donnees, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const lien = document.createElement("a");
-  lien.href = url;
-  lien.download = `anti-brainrotting-backup-${dateJour()}.json`;
-  document.body.appendChild(lien);
-  lien.click();
-  document.body.removeChild(lien);
-  URL.revokeObjectURL(url);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `anti-brainrotting-backup-${dateJour()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 function declencherImportation() {
-  if (running) {
-    if (!confirm("Une session est en cours. Importer une sauvegarde annulera la session actuelle. Continuer ?")) {
-      return;
-    }
-    declarerEchec("SESSION RÉINITIALISÉE PAR IMPORT");
-  }
+  if (running && !confirm("Une session est en cours. Continuer annulera la session actuelle.")) return;
+  if (running) declarerEchec("SESSION RÉINITIALISÉE PAR IMPORT");
   $('fileInputImport').click();
 }
 
-function gererFichierImport(event) {
-  const fichier = event.target.files?.[0];
-  if (!fichier) return;
+function gererFichierImport(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-  const lecteur = new FileReader();
-  lecteur.onload = e => {
+  const reader = new FileReader();
+  reader.onload = ev => {
     try {
-      const payload = JSON.parse(e.target.result);
-      if (!payload || !payload.stats) {
-        throw new Error("Format JSON non valide : bloc 'stats' manquant.");
-      }
-
-      const statsValidees = parserEtValiderStats(payload.stats);
-      enregistrerDonneesStats(statsValidees);
-
+      const payload = JSON.parse(ev.target.result);
+      if (!payload?.stats) throw new Error("Format JSON non valide : bloc 'stats' manquant.");
+      enregistrerDonneesStats(parserEtValiderStats(payload.stats));
       if (payload.config) {
-        appliquerParametres(payload.config);
+        if (DURATION_TIERS.some(t => t.id === payload.config.selectedTierId)) selectedTierId = payload.config.selectedTierId;
+        if (payload.config.surpriseFreq !== undefined) $('surpriseFreq').value = payload.config.surpriseFreq;
         sauvegarderParametres();
       }
-
-      gererChangementDistribution();
       rafraichirAffichageStats();
       actualiserBoutonRecommencer();
       alert("Progression restaurée avec succès !");
     } catch (err) {
       alert("Erreur lors de l'import : " + err.message);
     } finally {
-      event.target.value = "";
+      e.target.value = "";
     }
   };
-  lecteur.readAsText(fichier);
+  reader.readAsText(file);
 }
 
-// --- LOGIQUE METIER & PALIERS ---
-
+// Métier & Affichage
 const getTierActuel = () => DURATION_TIERS.find(t => t.id === selectedTierId) || DURATION_TIERS[0];
-const getTierCout = t => Math.round(t.minSec * (t.buyMult || 1.2));
+const getTierCout = t => Math.round(t.minSec * t.buyMult);
 
 function actualiserBoutonRecommencer() {
-  if (running || pendingVictory) return;
-  reinitialiserBouton(`COMMENCER\n${formaterTemps(getTierActuel().minSec)}`);
+  if (!running && !pendingVictory) setBouton(`COMMENCER\n${formaterTemps(getTierActuel().minSec)}`);
 }
 
 function selectionnerPalier(id) {
@@ -214,12 +150,11 @@ function rafraichirAffichageStats() {
   const tierObj = getTierActuel();
 
   $('statDayStreak').textContent = `${data.dayStreak}j`;
-  $('statDayStreakRecord').textContent = `Record : ${data.dayStreakRecord || 0} j`;
-  $('statBank').textContent = formaterTemps(data.bankSeconds || 0, true);
+  $('statDayStreakRecord').textContent = `Record : ${data.dayStreakRecord}j`;
+  $('statBank').textContent = formaterTemps(data.bankSeconds, true);
 
-  const fragment = document.createDocumentFragment();
-  DURATION_TIERS.forEach(t => {
-    const tData = data.tiers[t.id] || { streak: 0, record: 0, lastDate: null };
+  $('tiersContainer').replaceChildren(...DURATION_TIERS.map(t => {
+    const tData = data.tiers[t.id];
     const isDone = tData.lastDate === today;
     const box = document.createElement('div');
     box.className = `tier-box ${isDone ? "completed-today" : "locked"} ${selectedTierId === t.id ? "selected-target" : ""}`;
@@ -231,61 +166,65 @@ function rafraichirAffichageStats() {
       <span class="tier-mult">×${t.rateFull}</span>
       <span class="tier-sac">s:×${t.rateSacrifice}</span>
     `;
-    fragment.appendChild(box);
-  });
-  $('tiersContainer').replaceChildren(fragment);
+    return box;
+  }));
 
   const isDoneToday = data.tiers[tierObj.id]?.lastDate === today;
-  $('bonusInfo').style.display = (!running && !pendingVictory && isDoneToday) ? 'flex' : 'none';
+  const idle = !running && !pendingVictory;
+
+  $('bonusInfo').style.display = (idle && isDoneToday) ? 'flex' : 'none';
   if (isDoneToday) $('bonusInfo').textContent = `Palier ${tierObj.label} déjà validé`;
 
   const buySec = $('buySection');
-  if (!running && !pendingVictory && !isDoneToday) {
+  if (idle && !isDoneToday) {
     const cout = getTierCout(tierObj);
     buySec.style.display = 'block';
-    $('btnBuyStreak').textContent = `Acheter streak ${tierObj.label}×${tierObj.buyMult || 1.2} (${formaterTemps(cout, true)})`;
-    $('btnBuyStreak').disabled = (data.bankSeconds || 0) < cout;
+    $('btnBuyStreak').textContent = `Acheter streak ${tierObj.label}×${tierObj.buyMult} (${formaterTemps(cout, true)})`;
+    $('btnBuyStreak').disabled = data.bankSeconds < cout;
   } else {
     buySec.style.display = 'none';
   }
 }
 
+function validerStreakJour(stats, tier, today) {
+  updateStreakData(stats, 'lastActiveDate', 'dayStreak', 'dayStreakRecord', today);
+  const tData = stats.tiers[tier.id] = stats.tiers[tier.id] || { streak: 0, record: 0, lastDate: null };
+  updateStreakData(tData, 'lastDate', 'streak', 'record', today);
+}
+
 function acheterStreak() {
   if (running || pendingVictory) return;
   const data = chargerDonneesStats();
-  const today = dateJour();
   const tier = getTierActuel();
   const cout = getTierCout(tier);
 
-  if ((data.bankSeconds || 0) < cout) return alert("Solde de temps insuffisant.");
+  if (data.bankSeconds < cout) return alert("Solde de temps insuffisant.");
 
   data.bankSeconds -= cout;
-  updateStreakData(data, 'lastActiveDate', 'dayStreak', 'dayStreakRecord', today);
-  const tData = data.tiers[tier.id] = data.tiers[tier.id] || { streak: 0, record: 0, lastDate: null };
-  updateStreakData(tData, 'lastDate', 'streak', 'record', today);
-
+  validerStreakJour(data, tier, dateJour());
   enregistrerDonneesStats(data);
   rafraichirAffichageStats();
   alert(`Streak ${tier.label} acheté avec succès !`);
+}
+
+function setModeRecompense(actif) {
+  $('rewardChoiceSection').style.display = actif ? 'flex' : 'none';
+  $('actionBtn').style.display = actif ? 'none' : 'flex';
 }
 
 function traiterRecompenseSession(choix) {
   if (!pendingVictory) return;
   const { dureeReelle, targetTier } = pendingVictory;
   const stats = chargerDonneesStats();
-  const today = dateJour();
   let texteResultat = "";
 
   if (choix === 'streak') {
-    updateStreakData(stats, 'lastActiveDate', 'dayStreak', 'dayStreakRecord', today);
-    const tData = stats.tiers[targetTier.id] = stats.tiers[targetTier.id] || { streak: 0, record: 0, lastDate: null };
-    updateStreakData(tData, 'lastDate', 'streak', 'record', today);
+    validerStreakJour(stats, targetTier, dateJour());
     texteResultat = "STREAK COMPTABILISÉ";
   } else {
     const isSacrifice = choix === 'bank_half';
-    const rate = isSacrifice ? targetTier.rateSacrifice : targetTier.rateFull;
-    const gain = Math.floor(dureeReelle * rate);
-    stats.bankSeconds = (stats.bankSeconds || 0) + gain;
+    const gain = Math.floor(dureeReelle * (isSacrifice ? targetTier.rateSacrifice : targetTier.rateFull));
+    stats.bankSeconds += gain;
     texteResultat = `+${formaterTemps(gain)} ${isSacrifice ? '(SACRIFICE)' : 'SOLDÉ'}`;
   }
 
@@ -294,18 +233,8 @@ function traiterRecompenseSession(choix) {
 
   const tempsTenu = formaterTemps(dureeReelle);
   pendingVictory = null;
-  $('rewardChoiceSection').style.display = 'none';
-  $('actionBtn').style.display = 'flex';
-  reinitialiserBouton(`GAGNÉ (${tempsTenu})\n${texteResultat}\nRECOMMENCER`);
-}
-
-function gererChangementDistribution() {
-  const isFixed = $('probDist').value === 'fixed';
-  $('surpriseFreq').disabled = !isFixed;
-  const surpriseCard = $('rowSurpriseCard');
-  if (surpriseCard) {
-    surpriseCard.classList.toggle('hidden', !isFixed);
-  }
+  setModeRecompense(false);
+  setBouton(`GAGNÉ (${tempsTenu})\n${texteResultat}\nRECOMMENCER`);
 }
 
 function formaterTemps(totalSec, compact = false) {
@@ -313,28 +242,22 @@ function formaterTemps(totalSec, compact = false) {
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
   const parts = [];
-  if (h > 0) parts.push(`${h}h`);
-  if (m > 0) parts.push(`${m}m`);
-  if (s > 0 || !parts.length) parts.push(`${s}s`);
+  if (h) parts.push(`${h}h`);
+  if (m) parts.push(`${m}m`);
+  if (s || !parts.length) parts.push(`${s}s`);
   return parts.join(compact ? '' : ' ');
 }
 
-function calculerTempsCible(maxSec, mode) {
-  if (mode === 'fixed') return maxSec;
-  const u = Math.random();
-  const mult = mode === 'linear' ? Math.sqrt(u) : u;
-  return Math.max(1, Math.floor(mult * (maxSec + 1)));
+function toggleFormInputs(disabled) {
+  $('surpriseFreq').disabled = disabled;
+  if (disabled) $('buySection').style.display = $('bonusInfo').style.display = 'none';
+  else rafraichirAffichageStats();
 }
 
-function toggleFormInputs(disabled) {
-  $('probDist').disabled = disabled;
-  if (disabled) {
-    $('surpriseFreq').disabled = true;
-    $('buySection').style.display = $('bonusInfo').style.display = 'none';
-  } else {
-    gererChangementDistribution();
-    rafraichirAffichageStats();
-  }
+function setBouton(label = "COMMENCER", className = "") {
+  toggleFormInputs(className === "stop" || className === "presence");
+  $('actionBtn').textContent = label;
+  $('actionBtn').className = className;
 }
 
 function handleClick() {
@@ -342,27 +265,19 @@ function handleClick() {
     clearTimeout(presenceTimer);
     presenceMode = null;
     pauseOffsetMs += (Date.now() - pauseStartMs);
-    lastSurpriseEndSecond = elapsedSeconds;
-
-    const btn = $('actionBtn');
-    btn.textContent = "ABANDONNER";
-    btn.className = "stop";
+    setBouton("ABANDONNER", "stop");
   } else if (presenceMode === 'final') {
     clearTimeout(presenceTimer);
     presenceMode = null;
 
     const stats = chargerDonneesStats();
     const targetTier = getTierActuel();
-    const alreadyDoneToday = stats.tiers[targetTier.id]?.lastDate === dateJour();
-
     pendingVictory = { dureeReelle: targetSeconds, targetTier };
 
-    if (!alreadyDoneToday) {
-      const gainPotentiel = Math.floor(targetSeconds * targetTier.rateSacrifice);
+    if (stats.tiers[targetTier.id]?.lastDate !== dateJour()) {
       $('btnChooseStreak').textContent = `VALIDER SÉRIE ${targetTier.label}`;
-      $('btnChooseBank').textContent = `SOLDE TEMPS : +${formaterTemps(gainPotentiel)} (×${targetTier.rateSacrifice})`;
-      $('actionBtn').style.display = 'none';
-      $('rewardChoiceSection').style.display = 'flex';
+      $('btnChooseBank').textContent = `SOLDE TEMPS : +${formaterTemps(Math.floor(targetSeconds * targetTier.rateSacrifice))} (×${targetTier.rateSacrifice})`;
+      setModeRecompense(true);
       toggleFormInputs(true);
     } else {
       traiterRecompenseSession('bank_full');
@@ -374,31 +289,58 @@ function handleClick() {
   }
 }
 
+/**
+ * Découpe la session en tranches égales et tire une seconde uniforme par tranche.
+ * Seule contrainte : un contrôle ne peut pas survenir à la même seconde qu'un autre.
+ */
+function genererControlesParFenetres(totalSec, freqVal) {
+  if (freqVal <= 0 || totalSec <= 0) return [];
+
+  const fenetreSec = Math.round(1 / freqVal);
+  const instansPris = new Set();
+  const liste = [];
+
+  for (let debutFenetre = 0; debutFenetre < totalSec; debutFenetre += fenetreSec) {
+    const finFenetre = Math.min(debutFenetre + fenetreSec, totalSec);
+    const minSec = debutFenetre;
+    const maxSec = finFenetre - 1;
+
+    if (minSec <= maxSec) {
+      let instant = Math.floor(minSec + Math.random() * (maxSec - minSec + 1));
+      
+      // En cas de collision rarissime sur la même seconde, on décale
+      if (instansPris.has(instant)) {
+        if (instant + 1 < totalSec && !instansPris.has(instant + 1)) {
+          instant++;
+        } else if (instant - 1 >= 0 && !instansPris.has(instant - 1)) {
+          instant--;
+        }
+      }
+
+      if (!instansPris.has(instant)) {
+        instansPris.add(instant);
+        liste.push(instant);
+      }
+    }
+  }
+
+  // Tri chronologique au cas où un décalage a été appliqué
+  return liste.sort((a, b) => a - b);
+}
+
 function demarrerSession() {
   sauvegarderParametres();
-
-  const maxTotal = getTierActuel().minSec;
-  const distMode = $('probDist').value;
-
-  targetSeconds = calculerTempsCible(maxTotal, distMode);
-  surpriseProbPerSec = (distMode === 'fixed') ? (parseFloat($('surpriseFreq').value) || 0) : 0;
-  
-  elapsedSeconds = 0;
-  pauseOffsetMs = 0;
+  targetSeconds = getTierActuel().minSec;
+  elapsedSeconds = pauseOffsetMs = 0;
   startTime = Date.now();
-  lastSurpriseEndSecond = -999;
-  presenceMode = null;
-  pendingVictory = null;
+  presenceMode = pendingVictory = null;
+
+  const freqVal = parseFloat($('surpriseFreq').value) || 0;
+  scheduledSurprises = genererControlesParFenetres(targetSeconds, freqVal);
+
   running = true;
-
-  $('rewardChoiceSection').style.display = 'none';
-  $('actionBtn').style.display = 'flex';
-
-  toggleFormInputs(true);
-
-  const btn = $('actionBtn');
-  btn.textContent = "ABANDONNER";
-  btn.className = "stop";
+  setModeRecompense(false);
+  setBouton("ABANDONNER", "stop");
 
   clearInterval(masterInterval);
   masterInterval = setInterval(moteurTemps, 200);
@@ -409,7 +351,6 @@ function moteurTemps() {
 
   const currentSec = Math.floor((Date.now() - startTime - pauseOffsetMs) / 1000);
   if (currentSec <= elapsedSeconds) return;
-
   elapsedSeconds = currentSec;
 
   if (elapsedSeconds >= targetSeconds) {
@@ -419,68 +360,44 @@ function moteurTemps() {
     return;
   }
 
-  if (surpriseProbPerSec > 0) {
-    const delaiEcoule = (elapsedSeconds - lastSurpriseEndSecond) >= 10;
-    const pasTropProcheFin = (targetSeconds - elapsedSeconds) > 20;
-
-    if (delaiEcoule && pasTropProcheFin && Math.random() < surpriseProbPerSec) {
-      pauseStartMs = Date.now();
-      activerCompteARebours('mid', 5, "ATTENTION????", "CONTRÔLE MANQUÉ");
-    }
+  // Déclenchement dès que la seconde cible programmée est atteinte
+  if (scheduledSurprises.length > 0 && elapsedSeconds >= scheduledSurprises[0]) {
+    scheduledSurprises.shift();
+    pauseStartMs = Date.now();
+    activerCompteARebours('mid', 5, "ATTENTION????", "CONTRÔLE MANQUÉ");
   }
 }
 
 function activerCompteARebours(mode, seconds, symbol, failReason) {
   clearTimeout(presenceTimer);
   presenceMode = mode;
-  const btn = $('actionBtn');
-  btn.textContent = symbol;
-  btn.className = "presence";
+  setBouton(symbol, "presence");
   presenceTimer = setTimeout(() => {
     if (presenceMode === mode) declarerEchec(failReason);
   }, seconds * 1000);
 }
 
 function declarerEchec(raison = "NON VALIDÉ") {
-  presenceMode = null;
+  presenceMode = pendingVictory = null;
+  scheduledSurprises = [];
   running = false;
-  pendingVictory = null;
   clearInterval(masterInterval);
   clearTimeout(presenceTimer);
-
-  $('rewardChoiceSection').style.display = 'none';
-  $('actionBtn').style.display = 'flex';
-
-  reinitialiserBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}\nRECOMMENCER`);
+  setModeRecompense(false);
+  setBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}\nRECOMMENCER`);
 }
 
-function reinitialiserBouton(label = "COMMENCER") {
-  toggleFormInputs(false);
-  const btn = $('actionBtn');
-  btn.textContent = label;
-  btn.className = "";
-}
-
-// Écouteurs d'événements - Import & Export JSON
+// Événements
 $('btnExport').addEventListener('click', exporterDonneesJSON);
 $('btnImport').addEventListener('click', declencherImportation);
 $('fileInputImport').addEventListener('change', gererFichierImport);
-
-// Écouteurs d'événements - Sessions & Récompenses
 $('actionBtn').addEventListener('click', handleClick);
 $('btnBuyStreak').addEventListener('click', acheterStreak);
-
 $('btnChooseStreak').addEventListener('click', () => traiterRecompenseSession('streak'));
 $('btnChooseBank').addEventListener('click', () => traiterRecompenseSession('bank_half'));
-
 $('surpriseFreq').addEventListener('change', sauvegarderParametres);
-$('probDist').addEventListener('change', () => {
-  gererChangementDistribution();
-  sauvegarderParametres();
-});
 
 // Initialisation
 chargerParametres();
-gererChangementDistribution();
 rafraichirAffichageStats();
 actualiserBoutonRecommencer();

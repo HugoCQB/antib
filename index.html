@@ -39,23 +39,15 @@
     <button id="btnBuyStreak">Acheter le streak</button>
   </div>
 
-  <!-- Sélecteur de tirage -->
-  <div class="mode-select-container">
-    <select id="probDist" class="full-width-select">
-      <option value="linear" selected>Tirage : Linéaire (vers palier)</option>
-      <option value="fixed">Tirage : Durée fixe (Palier)</option>
-      <option value="uniform">Tirage : Uniforme (classique)</option>
-    </select>
-  </div>
-
-  <!-- Sélecteur de contrôles surprises -->
-  <div class="mode-select-container hidden" id="rowSurpriseCard">
+  <!-- Sélecteur de contrôles surprises (toujours visible) -->
+  <div class="mode-select-container" id="rowSurpriseCard">
     <select id="surpriseFreq" class="full-width-select">
-      <option value="0">Contrôles : Aucun (0 %)</option>
-      <option value="0.0055">Contrôles : Rares (~1 / 3 min)</option>
-      <option value="0.011" selected>Contrôles : Modérés (~1 / 90 s)</option>
-      <option value="0.020">Contrôles : Fréquents (~1 / 50 s)</option>
-      <option value="0.0333">Contrôles : Intenses (~1 / 30 s)</option>
+      <option value="0.0055">Contrôles : Rares (1 / 3 min)</option>
+      <option value="0.011" selected>Contrôles : Modérés (1 / 90 s)</option>
+      <option value="0.020">Contrôles : Fréquents (1 / 50 s)</option>
+      <option value="0.0333">Contrôles : Intenses (1 / 30 s)</option>
+      <option value="0.1">Contrôles : Extrêmes (1 / 10 s)</option>
+      <option value="0.05">Contrôles : Impossible (1 / 5 s)</option>
     </select>
   </div>
 
