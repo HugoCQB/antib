@@ -74,7 +74,7 @@ function updateSyncKeyUI() {
   const el = $('syncKeyLabel');
   if (!el) return;
   const isLocked = Boolean(currentKeyPassword);
-  el.textContent = syncKey ? `CLÉ TEST ${isLocked ? "[VERROUILLÉE]" : ""}` : "CLÉ : CRÉATION...";
+  el.textContent = syncKey ? `CLÉ ${isLocked ? "[VERROUILLÉE]" : ""}` : "CLÉ : CRÉATION...";
 }
 
 function genererNouvelleCle() {
