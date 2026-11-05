@@ -21,11 +21,33 @@ const DURATION_TIERS = [
   { id: "6h",   label: "≥ 6h",   minSec: 21600, rateFull: 0.68, rateSacrifice: 0.26, buyMult: 1.1 }
 ];
 
-const SURPRISE_CHANCE_PER_SEC = 1/10;
+const SURPRISE_CHANCE_PER_SEC = 1 / 5;
+
+// Chaque chaîne fait exactement 11 caractères pour empêcher toute détection par largeur de bloc
+const PATTERNS = {
+  running: [
+    "ATTENDRE.",
+    "ATTENDRE..",
+    "ATTENDRE..."
+  ],
+  // Contrôle intermédiaire : même rythme, mot différent
+  mid: [
+    "VALIDER..",
+    "VALIDER...",
+    "VALIDER...."
+  ],
+  // Contrôle final
+  final: [
+    "CONFIRMER",
+    "CONFIRMER.",
+    "CONFIRMER.."
+  ]
+};
 
 let selectedTierId = "1m", running = false, presenceMode = null;
 let targetSeconds = 0, elapsedSeconds = 0, pauseOffsetMs = 0, pauseStartMs = 0, startTime = 0;
-let masterInterval = null, presenceTimer = null;
+let masterInterval = null, presenceTimer = null, flickerTimeout = null;
+let flickerIndex = 0;
 let pendingVictory = null;
 
 const dateJour = () => new Date().toISOString().slice(0, 10);
@@ -36,6 +58,37 @@ const storageSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v));
 const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE"); };
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
 window.addEventListener("pagehide", stopIfRunning);
+
+// Animation asynchrone avec micro-décalages de temps (jitter)
+function demarrerFlicker() {
+  arreterFlicker();
+  
+  const tick = () => {
+    flickerIndex++;
+    let currentList = null;
+
+    if (presenceMode === 'mid') currentList = PATTERNS.mid;
+    else if (presenceMode === 'final') currentList = PATTERNS.final;
+    else if (running) currentList = PATTERNS.running;
+
+    if (currentList) {
+      $('actionBtn').textContent = currentList[flickerIndex % currentList.length];
+    }
+
+    // Intervalle oscillant entre 250ms et 430ms pour éviter tout automatisme cérébral
+    const delay = Math.floor(Math.random() * 180) + 250;
+    flickerTimeout = setTimeout(tick, delay);
+  };
+
+  tick();
+}
+
+function arreterFlicker() {
+  if (flickerTimeout) {
+    clearTimeout(flickerTimeout);
+    flickerTimeout = null;
+  }
+}
 
 function updateStreakData(target, lastKey, streakKey, recordKey, today) {
   if (target[lastKey] !== today) {
@@ -127,7 +180,10 @@ const getTierActuel = () => DURATION_TIERS.find(t => t.id === selectedTierId) ||
 const getTierCout = t => Math.round(t.minSec * t.buyMult);
 
 function actualiserBoutonRecommencer() {
-  if (!running && !pendingVictory) setBouton(`COMMENCER\n${formaterTemps(getTierActuel().minSec)}`);
+  if (!running && !pendingVictory) {
+    arreterFlicker();
+    setBouton(`COMMENCER\n${formaterTemps(getTierActuel().minSec)}`);
+  }
 }
 
 function selectionnerPalier(id) {
@@ -228,6 +284,7 @@ function traiterRecompenseSession(choix) {
   const tempsTenu = formaterTemps(dureeReelle);
   pendingVictory = null;
   setModeRecompense(false);
+  arreterFlicker();
   setBouton(`GAGNÉ (${tempsTenu})\n${texteResultat}\nRECOMMENCER`);
 }
 
@@ -258,10 +315,11 @@ function handleClick() {
     clearTimeout(presenceTimer);
     presenceMode = null;
     pauseOffsetMs += (Date.now() - pauseStartMs);
-    setBouton("ABANDONNER", "stop");
+    setBouton(PATTERNS.running[0], "stop");
   } else if (presenceMode === 'final') {
     clearTimeout(presenceTimer);
     presenceMode = null;
+    arreterFlicker();
 
     const stats = chargerDonneesStats();
     const targetTier = getTierActuel();
@@ -291,7 +349,8 @@ function demarrerSession() {
 
   running = true;
   setModeRecompense(false);
-  setBouton("ABANDONNER", "stop");
+  setBouton(PATTERNS.running[0], "stop");
+  demarrerFlicker();
 
   clearInterval(masterInterval);
   masterInterval = setInterval(moteurTemps, 200);
@@ -309,22 +368,22 @@ function moteurTemps() {
     if (elapsedSeconds >= targetSeconds) {
       clearInterval(masterInterval);
       running = false;
-      activerCompteARebours('final', 5, "ATTENTION!!!!", "NON VALIDÉ");
+      activerCompteARebours('final', 5, PATTERNS.final[0], "NON VALIDÉ");
       return;
     }
 
     if (Math.random() < SURPRISE_CHANCE_PER_SEC) {
       pauseStartMs = Date.now();
-      activerCompteARebours('mid', 5, "ATTENTION???", "CONTRÔLE MANQUÉ");
+      activerCompteARebours('mid', 5, PATTERNS.mid[0], "CONTRÔLE MANQUÉ");
       return;
     }
   }
 }
 
-function activerCompteARebours(mode, seconds, symbol, failReason) {
+function activerCompteARebours(mode, seconds, initialText, failReason) {
   clearTimeout(presenceTimer);
   presenceMode = mode;
-  setBouton(symbol, "presence");
+  setBouton(initialText, "presence");
   presenceTimer = setTimeout(() => {
     if (presenceMode === mode) declarerEchec(failReason);
   }, seconds * 1000);
@@ -333,6 +392,7 @@ function activerCompteARebours(mode, seconds, symbol, failReason) {
 function declarerEchec(raison = "NON VALIDÉ") {
   presenceMode = pendingVictory = null;
   running = false;
+  arreterFlicker();
   clearInterval(masterInterval);
   clearTimeout(presenceTimer);
   setModeRecompense(false);
