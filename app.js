@@ -26,7 +26,6 @@ const PATTERNS = {
   final: ["CONFIRMER", "CONFIRMER.", "CONFIRMER.."]
 };
 
-// Endpoint REST officiel Firebase Realtime Database
 const FIREBASE_DB_URL = "https://antibrainrotting-4f194-default-rtdb.europe-west1.firebasedatabase.app";
 
 let syncKey = localStorage.getItem("meditation_sync_key") || null;
@@ -46,8 +45,6 @@ const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE")
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
 window.addEventListener("pagehide", stopIfRunning);
 
-/* FONCTION UTILITAIRE DE HACHAGE (SHA-256) */
-
 async function hashPassword(str) {
   if (!str) return null;
   const buffer = new TextEncoder().encode(str);
@@ -56,8 +53,6 @@ async function hashPassword(str) {
     .map(b => b.toString(16).padStart(2, "0"))
     .join("");
 }
-
-/* GESTION DE LA SYNCHRONISATION FIREBASE */
 
 function updateSyncStatus(msg, isSuccess = false) {
   const el = $('syncStatus');
@@ -79,15 +74,12 @@ function genererNouvelleCle() {
 }
 
 function reinitialiserDonneesLocales() {
-  // Réinitialise le palier sélectionné à 1m
   selectedTierId = "1m";
   sauvegarderParametres();
 
-  // Remet à zéro les statistiques locales (y compris le solde de temps)
   const emptyStats = parserEtValiderStats({ bankSeconds: 0 });
   enregistrerDonneesStats(emptyStats, false);
   
-  // Réinitialise l'état d'affichage (bouton commencer & paliers)
   pendingVictory = null;
   running = false;
   finalValidationMode = false;
@@ -109,7 +101,6 @@ async function changerOuCopierCle() {
   if (action === null) return;
   const saisie = action.trim();
 
-  // Option 2 : Verrouiller ou déverrouiller la clé actuelle
   if (saisie === "2") {
     if (!syncKey) {
       alert("Veuillez d'abord générer ou charger une clé.");
@@ -129,10 +120,8 @@ async function changerOuCopierCle() {
     return;
   }
 
-  // Changer de clé = réinitialiser l'interface et la progression locale
   reinitialiserDonneesLocales();
 
-  // Option 1 ou saisie directe
   let nouvelleCle = (saisie === "1") ? (prompt("Entrez la clé :") || "").trim() : saisie;
 
   if (!nouvelleCle) {
@@ -176,13 +165,11 @@ async function pullFromCloud() {
     const payload = await res.json();
 
     if (!payload) {
-      // Clé distante vide = progression vierge
       reinitialiserDonneesLocales();
       await pushToCloud();
       return;
     }
 
-    // Si la clé distante est protégée par un mot de passe
     if (payload.passwordHash) {
       let tentatives = 0;
       let hashLocal = await hashPassword(currentKeyPassword);
@@ -230,7 +217,6 @@ async function pushToCloud() {
 
   updateSyncStatus("ENVOI...");
   try {
-    // Vérification du mot de passe distant avant écrasement
     const checkRes = await fetch(`${FIREBASE_DB_URL}/users/${encodeURIComponent(syncKey)}/passwordHash.json`);
     if (checkRes.ok) {
       const distantHash = await checkRes.json();
@@ -265,8 +251,6 @@ async function pushToCloud() {
     updateSyncStatus("ERREUR ENVOI");
   }
 }
-
-/* FLICKER & CORE */
 
 function demarrerFlicker() {
   arreterFlicker();
@@ -501,7 +485,7 @@ function demarrerSession() {
   
   // Temps masqué aléatoire entre 1 seconde et la limite du palier
   const maxSec = getTierActuel().minSec;
-  targetSeconds = Math.floor(Math.random() * maxSec) + 1;
+  targetSeconds = Math.floor(Math.random() * maxSec);
 
   elapsedSeconds = 0;
   startTime = Date.now();
@@ -563,5 +547,4 @@ chargerParametres();
 rafraichirAffichageStats();
 actualiserBoutonRecommencer();
 
-// Lancement automatique du sync distant
 pullFromCloud();
