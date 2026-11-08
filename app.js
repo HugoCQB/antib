@@ -372,7 +372,12 @@ function actualiserBoutonRecommencer() {
 }
 
 function selectionnerPalier(label) {
-  if (running || pendingVictory || victoryDisplayMode || defeatDisplayMode) return;
+  if (running || pendingVictory) return;
+  
+  // Si on était en affichage de victoire/défaite, cliquer sur un palier réinitialise l'affichage vers COMMENCER
+  victoryDisplayMode = false;
+  defeatDisplayMode = false;
+  
   selectedTierLabel = label;
   sauvegarderParametres();
   rafraichirAffichageStats();
@@ -405,7 +410,7 @@ function rafraichirAffichageStats() {
   }));
 
   const isDoneToday = data.tiers[tierObj.label]?.lastDate === today;
-  const idle = !running && !pendingVictory && !victoryDisplayMode && !defeatDisplayMode;
+  const idle = !running && !pendingVictory;
 
   $('bonusInfo').style.display = (idle && isDoneToday) ? 'flex' : 'none';
   if (isDoneToday) $('bonusInfo').textContent = `Palier ${tierObj.label} déjà validé`;
