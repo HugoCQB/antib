@@ -31,6 +31,7 @@ const FIREBASE_DB_URL = "https://antibrainrotting-4f194-default-rtdb.europe-west
 let syncKey = localStorage.getItem("meditation_sync_key") || null;
 let currentKeyPassword = localStorage.getItem("meditation_sync_pwd") || "";
 let selectedTierLabel = "1m", running = false, finalValidationMode = false;
+let victoryDisplayMode = false;
 let targetSeconds = 0, elapsedSeconds = 0, startTime = 0;
 let masterInterval = null, presenceTimer = null, flickerTimeout = null;
 let flickerIndex = 0;
@@ -121,6 +122,7 @@ function reinitialiserDonneesLocales() {
   pendingVictory = null;
   running = false;
   finalValidationMode = false;
+  victoryDisplayMode = false;
   setModeRecompense(false);
   rafraichirAffichageStats();
   actualiserBoutonRecommencer();
@@ -363,14 +365,14 @@ const getTierActuel = () => DURATION_TIERS.find(t => t.label === selectedTierLab
 const getTierCout = t => Math.round(t.minSec * t.buyMult);
 
 function actualiserBoutonRecommencer() {
-  if (!running && !pendingVictory) {
+  if (!running && !pendingVictory && !victoryDisplayMode) {
     arreterFlicker();
     setBouton(`COMMENCER ${formaterTemps(getTierActuel().minSec)}`);
   }
 }
 
 function selectionnerPalier(label) {
-  if (running || pendingVictory) return;
+  if (running || pendingVictory || victoryDisplayMode) return;
   selectedTierLabel = label;
   sauvegarderParametres();
   rafraichirAffichageStats();
@@ -403,7 +405,7 @@ function rafraichirAffichageStats() {
   }));
 
   const isDoneToday = data.tiers[tierObj.label]?.lastDate === today;
-  const idle = !running && !pendingVictory;
+  const idle = !running && !pendingVictory && !victoryDisplayMode;
 
   $('bonusInfo').style.display = (idle && isDoneToday) ? 'flex' : 'none';
   if (isDoneToday) $('bonusInfo').textContent = `Palier ${tierObj.label} déjà validé`;
@@ -426,7 +428,7 @@ function validerStreakJour(stats, tier, today) {
 }
 
 function acheterStreak() {
-  if (running || pendingVictory) return;
+  if (running || pendingVictory || victoryDisplayMode) return;
   const data = chargerDonneesStats();
   const tier = getTierActuel();
   const cout = getTierCout(tier);
@@ -468,7 +470,9 @@ function traiterRecompenseSession(choix) {
   pendingVictory = null;
   setModeRecompense(false);
   arreterFlicker();
-  setBouton(`GAGNÉ (${tempsTenu})\n${texteResultat}\nRECOMMENCER`);
+
+  victoryDisplayMode = true;
+  setBouton(`GAGNÉ (${tempsTenu})\n${texteResultat}`);
 }
 
 function formaterTemps(totalSec) {
@@ -494,7 +498,10 @@ function setBouton(label = "COMMENCER", className = "") {
 }
 
 function handleClick() {
-  if (finalValidationMode) {
+  if (victoryDisplayMode) {
+    victoryDisplayMode = false;
+    actualiserBoutonRecommencer();
+  } else if (finalValidationMode) {
     clearTimeout(presenceTimer);
     finalValidationMode = false;
     arreterFlicker();
@@ -527,6 +534,7 @@ function demarrerSession() {
   elapsedSeconds = 0;
   startTime = Date.now();
   finalValidationMode = false;
+  victoryDisplayMode = false;
   pendingVictory = null;
 
   running = true;
@@ -564,6 +572,7 @@ function activerCompteAReboursConfirmation(seconds, initialText, failReason) {
 
 function declarerEchec(raison = "NON VALIDÉ") {
   finalValidationMode = false;
+  victoryDisplayMode = false;
   pendingVictory = null;
   running = false;
   arreterFlicker();
