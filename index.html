@@ -9,6 +9,28 @@
 </head>
 <body>
 
+  <!-- BOUTON RÈGLES -->
+  <div class="sync-banner" id="btnToggleRules">
+    <span>RÈGLES DU JEU</span>
+  </div>
+
+  <!-- POPUP RÈGLES -->
+  <div class="modal-overlay hidden" id="rulesOverlay">
+    <div class="modal-card card">
+      <div class="modal-header">
+        <span>RÈGLES DU JEU</span>
+        <button class="btn-close" id="btnCloseRules">&times;</button>
+      </div>
+      <div class="rules-content">
+        <p><strong>1. Choisissez un palier :</strong> Il fixe le temps maximum secret d'attente (ex: 5m = entre 1s et 5min).</p>
+        <p><strong>2. Restez concentré :</strong> Cliquez sur <span>COMMENCER</span>. Vous ne devez ni quitter l'application ni changer d'onglet.</p>
+        <p><strong>3. Soyez réactif :</strong> Quand le bouton affiche <span>VALIDER</span>, vous avez exactement <strong>3 secondes</strong> pour cliquer dessus, sinon la session est perdue.</p>
+        <p><strong>4. Choisissez votre récompense :</strong> Validez votre série quotidienne (Streak) ou accumulez du solde de temps en banque pour acheter plus tard des streaks manqués.</p>
+      </div>
+      <button class="btn-modal-action" id="btnOkRules">COMPRIS</button>
+    </div>
+  </div>
+
   <div class="sync-banner" id="btnSyncKey">
     <span id="syncKeyLabel">CLÉ : CHARGEMENT...</span>
   </div>

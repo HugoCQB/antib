@@ -32,12 +32,94 @@ body {
 button,
 .unified-stats-card,
 .sync-banner,
-#bonusInfo {
+#bonusInfo,
+.modal-card {
   background: #000;
   color: #fff;
   border: 1px solid #fff;
   border-radius: 8px;
   font-family: inherit;
+}
+
+#btnToggleRules {
+  cursor: pointer;
+}
+
+/* POPUP MODALE RÈGLES */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  z-index: 1000;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 12px;
+  text-align: left;
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-bottom: 1px dashed #555;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.btn-close:hover {
+  color: #fff;
+}
+
+.rules-content p {
+  margin: 0 0 8px 0;
+  font-size: 0.65rem;
+  line-height: 1.4;
+  color: #ccc;
+}
+
+.rules-content p:last-child {
+  margin-bottom: 12px;
+}
+
+.rules-content strong {
+  color: #fff;
+}
+
+.rules-content span {
+  text-decoration: underline;
+  color: #fff;
+}
+
+.btn-modal-action {
+  width: 100%;
+  padding: 8px;
+  font-size: 0.75rem;
+  margin-top: 4px;
 }
 
 button {

@@ -45,6 +45,30 @@ const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE")
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
 window.addEventListener("pagehide", stopIfRunning);
 
+// GESTION DU POPUP DES RÈGLES DU JEU
+const btnToggleRules = $('btnToggleRules');
+const rulesOverlay = $('rulesOverlay');
+const btnCloseRules = $('btnCloseRules');
+const btnOkRules = $('btnOkRules');
+
+function ouvrirRules() {
+  if (rulesOverlay) rulesOverlay.classList.remove('hidden');
+}
+
+function fermerRules() {
+  if (rulesOverlay) rulesOverlay.classList.add('hidden');
+}
+
+if (btnToggleRules) btnToggleRules.addEventListener('click', ouvrirRules);
+if (btnCloseRules) btnCloseRules.addEventListener('click', fermerRules);
+if (btnOkRules) btnOkRules.addEventListener('click', fermerRules);
+
+if (rulesOverlay) {
+  rulesOverlay.addEventListener('click', (e) => {
+    if (e.target === rulesOverlay) fermerRules();
+  });
+}
+
 async function hashPassword(str) {
   if (!str) return null;
   const buffer = new TextEncoder().encode(str);
