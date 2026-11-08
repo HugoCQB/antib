@@ -1,36 +1,36 @@
 const $ = id => document.getElementById(id);
 
 const DURATION_TIERS = [
-  { id: "1m",   label: "1m",   minSec: 60,    rateFull: 0.15, rateSacrifice: 0.12, buyMult: 2.5 },
-  { id: "2m",   label: "2m",   minSec: 120,   rateFull: 0.17, rateSacrifice: 0.13, buyMult: 2.3 },
-  { id: "5m",   label: "5m",   minSec: 300,   rateFull: 0.20, rateSacrifice: 0.15, buyMult: 2.2 },
-  { id: "10m",  label: "10m",  minSec: 600,   rateFull: 0.25, rateSacrifice: 0.18, buyMult: 2.0 },
-  { id: "15m",  label: "15m",  minSec: 900,   rateFull: 0.30, rateSacrifice: 0.22, buyMult: 1.8 },
-  { id: "30m",  label: "30m",  minSec: 1800,  rateFull: 0.35, rateSacrifice: 0.18, buyMult: 1.5 },
-  { id: "45m",  label: "45m",  minSec: 2700,  rateFull: 0.40, rateSacrifice: 0.20, buyMult: 1.4 },
-  { id: "1h",   label: "1h",   minSec: 3600,  rateFull: 0.45, rateSacrifice: 0.22, buyMult: 1.3 },
-  { id: "1h30", label: "1h30", minSec: 5400,  rateFull: 0.50, rateSacrifice: 0.25, buyMult: 1.25 },
-  { id: "2h",   label: "2h",   minSec: 7200,  rateFull: 0.55, rateSacrifice: 0.24, buyMult: 1.2 },
-  { id: "2h30", label: "2h30", minSec: 9000,  rateFull: 0.58, rateSacrifice: 0.24, buyMult: 1.15 },
-  { id: "3h",   label: "3h",   minSec: 10800, rateFull: 0.60, rateSacrifice: 0.24, buyMult: 1.15 },
-  { id: "3h30", label: "3h30", minSec: 12600, rateFull: 0.62, rateSacrifice: 0.25, buyMult: 1.1 },
-  { id: "4h",   label: "4h",   minSec: 14400, rateFull: 0.64, rateSacrifice: 0.25, buyMult: 1.1 },
-  { id: "4h30", label: "4h30", minSec: 16200, rateFull: 0.65, rateSacrifice: 0.25, buyMult: 1.1 },
-  { id: "5h",   label: "5h",   minSec: 18000, rateFull: 0.66, rateSacrifice: 0.26, buyMult: 1.1 },
-  { id: "5h30", label: "5h30", minSec: 19800, rateFull: 0.67, rateSacrifice: 0.26, buyMult: 1.1 },
-  { id: "6h",   label: "6h",   minSec: 21600, rateFull: 0.68, rateSacrifice: 0.26, buyMult: 1.1 }
+  { label: "1m",   minSec: 60,    rateFull: 0.15, rateSacrifice: 0.12, buyMult: 2.5 },
+  { label: "2m",   minSec: 120,   rateFull: 0.17, rateSacrifice: 0.13, buyMult: 2.3 },
+  { label: "5m",   minSec: 300,   rateFull: 0.20, rateSacrifice: 0.15, buyMult: 2.2 },
+  { label: "10m",  minSec: 600,   rateFull: 0.25, rateSacrifice: 0.18, buyMult: 2.0 },
+  { label: "15m",  minSec: 900,   rateFull: 0.30, rateSacrifice: 0.22, buyMult: 1.8 },
+  { label: "30m",  minSec: 1800,  rateFull: 0.35, rateSacrifice: 0.18, buyMult: 1.5 },
+  { label: "45m",  minSec: 2700,  rateFull: 0.40, rateSacrifice: 0.20, buyMult: 1.4 },
+  { label: "1h",   minSec: 3600,  rateFull: 0.45, rateSacrifice: 0.22, buyMult: 1.3 },
+  { label: "1h30", minSec: 5400,  rateFull: 0.50, rateSacrifice: 0.25, buyMult: 1.25 },
+  { label: "2h",   minSec: 7200,  rateFull: 0.55, rateSacrifice: 0.24, buyMult: 1.2 },
+  { label: "2h30", minSec: 9000,  rateFull: 0.58, rateSacrifice: 0.24, buyMult: 1.15 },
+  { label: "3h",   minSec: 10800, rateFull: 0.60, rateSacrifice: 0.24, buyMult: 1.15 },
+  { label: "3h30", minSec: 12600, rateFull: 0.62, rateSacrifice: 0.25, buyMult: 1.1 },
+  { label: "4h",   minSec: 14400, rateFull: 0.64, rateSacrifice: 0.25, buyMult: 1.1 },
+  { label: "4h30", minSec: 16200, rateFull: 0.65, rateSacrifice: 0.25, buyMult: 1.1 },
+  { label: "5h",   minSec: 18000, rateFull: 0.66, rateSacrifice: 0.26, buyMult: 1.1 },
+  { label: "5h30", minSec: 19800, rateFull: 0.67, rateSacrifice: 0.26, buyMult: 1.1 },
+  { label: "6h",   minSec: 21600, rateFull: 0.68, rateSacrifice: 0.26, buyMult: 1.1 }
 ];
 
 const PATTERNS = {
   running: ["ATTENDRE.", "ATTENDRE..", "ATTENDRE..."],
-  final: ["CONFIRMER", "CONFIRMER.", "CONFIRMER.."]
+  final: ["VALIDER..", "VALIDER...", "VALIDER...."]
 };
 
 const FIREBASE_DB_URL = "https://antibrainrotting-4f194-default-rtdb.europe-west1.firebasedatabase.app";
 
 let syncKey = localStorage.getItem("meditation_sync_key") || null;
 let currentKeyPassword = localStorage.getItem("meditation_sync_pwd") || "";
-let selectedTierId = "1m", running = false, finalValidationMode = false;
+let selectedTierLabel = "1m", running = false, finalValidationMode = false;
 let targetSeconds = 0, elapsedSeconds = 0, startTime = 0;
 let masterInterval = null, presenceTimer = null, flickerTimeout = null;
 let flickerIndex = 0;
@@ -74,7 +74,7 @@ function genererNouvelleCle() {
 }
 
 function reinitialiserDonneesLocales() {
-  selectedTierId = "1m";
+  selectedTierLabel = "1m";
   sauvegarderParametres();
 
   const emptyStats = parserEtValiderStats({ bankSeconds: 0 });
@@ -290,9 +290,9 @@ function parserEtValiderStats(data = {}) {
   const today = dateJour();
   const tiers = {};
   DURATION_TIERS.forEach(t => {
-    const raw = (data.tiers && data.tiers[t.id]) || {};
+    const raw = (data.tiers && data.tiers[t.label]) || {};
     const streak = ecartJours(raw.lastDate, today) > 1 ? 0 : (raw.streak || 0);
-    tiers[t.id] = { streak, record: Math.max(streak, raw.record || 0), lastDate: raw.lastDate || null };
+    tiers[t.label] = { streak, record: Math.max(streak, raw.record || 0), lastDate: raw.lastDate || null };
   });
 
   const dayStreak = ecartJours(data.lastActiveDate, today) > 1 ? 0 : (data.dayStreak || 0);
@@ -313,27 +313,27 @@ function enregistrerDonneesStats(data, syncDistante = true) {
 }
 
 function sauvegarderParametres() {
-  storageSet('meditation_presence_config', { selectedTierId });
+  storageSet('meditation_presence_config', { selectedTierId: selectedTierLabel });
 }
 
 function chargerParametres() {
   const conf = storageGet('meditation_presence_config', {});
-  if (DURATION_TIERS.some(t => t.id === conf.selectedTierId)) selectedTierId = conf.selectedTierId;
+  if (DURATION_TIERS.some(t => t.label === conf.selectedTierId)) selectedTierLabel = conf.selectedTierId;
 }
 
-const getTierActuel = () => DURATION_TIERS.find(t => t.id === selectedTierId) || DURATION_TIERS[0];
+const getTierActuel = () => DURATION_TIERS.find(t => t.label === selectedTierLabel) || DURATION_TIERS[0];
 const getTierCout = t => Math.round(t.minSec * t.buyMult);
 
 function actualiserBoutonRecommencer() {
   if (!running && !pendingVictory) {
     arreterFlicker();
-    setBouton(`COMMENCER\nMax : ${formaterTemps(getTierActuel().minSec)}`);
+    setBouton(`COMMENCER ${formaterTemps(getTierActuel().minSec)}`);
   }
 }
 
-function selectionnerPalier(id) {
+function selectionnerPalier(label) {
   if (running || pendingVictory) return;
-  selectedTierId = id;
+  selectedTierLabel = label;
   sauvegarderParametres();
   rafraichirAffichageStats();
   actualiserBoutonRecommencer();
@@ -346,14 +346,14 @@ function rafraichirAffichageStats() {
 
   $('statDayStreak').textContent = `${data.dayStreak}j`;
   $('statDayStreakRecord').textContent = `Record : ${data.dayStreakRecord}j`;
-  $('statBank').textContent = formaterTemps(data.bankSeconds, true);
+  $('statBank').textContent = formaterTemps(data.bankSeconds);
 
   $('tiersContainer').replaceChildren(...DURATION_TIERS.map(t => {
-    const tData = data.tiers[t.id];
+    const tData = data.tiers[t.label];
     const isDone = tData.lastDate === today;
     const box = document.createElement('div');
-    box.className = `tier-box ${isDone ? "completed-today" : "locked"} ${selectedTierId === t.id ? "selected-target" : ""}`;
-    box.onclick = () => selectionnerPalier(t.id);
+    box.className = `tier-box ${isDone ? "completed-today" : "locked"} ${selectedTierLabel === t.label ? "selected-target" : ""}`;
+    box.onclick = () => selectionnerPalier(t.label);
     box.innerHTML = `
       <span class="tier-label">${t.label}</span>
       <span class="tier-val">${tData.streak}j</span>
@@ -364,7 +364,7 @@ function rafraichirAffichageStats() {
     return box;
   }));
 
-  const isDoneToday = data.tiers[tierObj.id]?.lastDate === today;
+  const isDoneToday = data.tiers[tierObj.label]?.lastDate === today;
   const idle = !running && !pendingVictory;
 
   $('bonusInfo').style.display = (idle && isDoneToday) ? 'flex' : 'none';
@@ -374,7 +374,7 @@ function rafraichirAffichageStats() {
   if (idle && !isDoneToday) {
     const cout = getTierCout(tierObj);
     buySec.style.display = 'block';
-    $('btnBuyStreak').textContent = `Acheter streak ${tierObj.label}×${tierObj.buyMult} (${formaterTemps(cout, true)})`;
+    $('btnBuyStreak').textContent = `Acheter streak ${tierObj.label}×${tierObj.buyMult} (${formaterTemps(cout)})`;
     $('btnBuyStreak').disabled = data.bankSeconds < cout;
   } else {
     buySec.style.display = 'none';
@@ -383,7 +383,7 @@ function rafraichirAffichageStats() {
 
 function validerStreakJour(stats, tier, today) {
   updateStreakData(stats, 'lastActiveDate', 'dayStreak', 'dayStreakRecord', today);
-  const tData = stats.tiers[tier.id] = stats.tiers[tier.id] || { streak: 0, record: 0, lastDate: null };
+  const tData = stats.tiers[tier.label] = stats.tiers[tier.label] || { streak: 0, record: 0, lastDate: null };
   updateStreakData(tData, 'lastDate', 'streak', 'record', today);
 }
 
@@ -433,7 +433,7 @@ function traiterRecompenseSession(choix) {
   setBouton(`GAGNÉ (${tempsTenu})\n${texteResultat}\nRECOMMENCER`);
 }
 
-function formaterTemps(totalSec, compact = false) {
+function formaterTemps(totalSec) {
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
@@ -441,7 +441,7 @@ function formaterTemps(totalSec, compact = false) {
   if (h) parts.push(`${h}h`);
   if (m) parts.push(`${m}m`);
   if (s || !parts.length) parts.push(`${s}s`);
-  return parts.join(compact ? '' : ' ');
+  return parts.join('');
 }
 
 function toggleFormInputs(disabled) {
@@ -465,7 +465,7 @@ function handleClick() {
     const targetTier = getTierActuel();
     pendingVictory = { dureeReelle: targetSeconds, targetTier };
 
-    if (stats.tiers[targetTier.id]?.lastDate !== dateJour()) {
+    if (stats.tiers[targetTier.label]?.lastDate !== dateJour()) {
       $('btnChooseStreak').textContent = `VALIDER SÉRIE ${targetTier.label}`;
       $('btnChooseBank').textContent = `SOLDE TEMPS : +${formaterTemps(Math.floor(targetSeconds * targetTier.rateSacrifice))} (×${targetTier.rateSacrifice})`;
       setModeRecompense(true);
@@ -484,7 +484,7 @@ function demarrerSession() {
   sauvegarderParametres();
   
   const maxSec = getTierActuel().minSec;
-  targetSeconds = Math.floor(Math.random() * maxSec);
+  targetSeconds = Math.floor(Math.random() * maxSec) + 1;
 
   elapsedSeconds = 0;
   startTime = Date.now();
@@ -511,7 +511,7 @@ function moteurTemps() {
   if (elapsedSeconds >= targetSeconds) {
     clearInterval(masterInterval);
     running = false;
-    activerCompteAReboursConfirmation(5, PATTERNS.final[0], "NON VALIDÉ");
+    activerCompteAReboursConfirmation(3, PATTERNS.final[0], "NON VALIDÉ");
   }
 }
 

@@ -9,7 +9,7 @@ body {
   margin: 0;
   background: #000;
   color: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "SF Mono", Monaco, Consolas, "Liberation Mono", monospace;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -100,7 +100,6 @@ button {
 .stat-val {
   font-size: 1.05rem;
   font-weight: 700;
-  font-family: "SF Mono", Monaco, Consolas, monospace;
 }
 
 .stat-sub {
@@ -128,6 +127,7 @@ button {
   cursor: pointer;
   color: #666;
   overflow: hidden;
+  font-family: inherit;
 }
 
 .tier-box span {
@@ -140,14 +140,13 @@ button {
 }
 
 .tier-label { font-size: 0.62rem; font-weight: 700; }
-.tier-val { font-size: 0.76rem; font-weight: 700; font-family: "SF Mono", Monaco, Consolas, monospace; }
+.tier-val { font-size: 0.76rem; font-weight: 700; }
 .tier-rec { font-size: 0.58rem; }
-.tier-mult { font-size: 0.55rem; font-family: "SF Mono", Monaco, Consolas, monospace; }
-.tier-sac { font-size: 0.52rem; font-family: "SF Mono", Monaco, Consolas, monospace; }
+.tier-mult { font-size: 0.55rem; }
+.tier-sac { font-size: 0.52rem; }
 
 .tier-box.completed-today {
   color: #fff;
-  border-color: #888;
 }
 
 .tier-box.selected-target {
@@ -224,7 +223,6 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: "SF Mono", Monaco, Consolas, "Liberation Mono", monospace;
   letter-spacing: 1px;
 }
 
