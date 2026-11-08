@@ -311,3 +311,8 @@ button {
 .hidden {
   display: none !important;
 }
+
+#btnToggleRules {
+  cursor: pointer;
+  touch-action: manipulation;
+}

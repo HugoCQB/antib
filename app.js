@@ -51,21 +51,35 @@ const rulesOverlay = $('rulesOverlay');
 const btnCloseRules = $('btnCloseRules');
 const btnOkRules = $('btnOkRules');
 
-function ouvrirRules() {
+function ouvrirRules(e) {
+  if (e) e.preventDefault(); // Évite les doubles clics sur mobile
   if (rulesOverlay) rulesOverlay.classList.remove('hidden');
 }
 
-function fermerRules() {
+function fermerRules(e) {
+  if (e) e.preventDefault();
   if (rulesOverlay) rulesOverlay.classList.add('hidden');
 }
 
-if (btnToggleRules) btnToggleRules.addEventListener('click', ouvrirRules);
-if (btnCloseRules) btnCloseRules.addEventListener('click', fermerRules);
-if (btnOkRules) btnOkRules.addEventListener('click', fermerRules);
+// Support combiné Mobile (touchstart) + Desktop (click)
+if (btnToggleRules) {
+  btnToggleRules.addEventListener('click', ouvrirRules);
+  btnToggleRules.addEventListener('touchstart', ouvrirRules, { passive: false });
+}
+
+if (btnCloseRules) {
+  btnCloseRules.addEventListener('click', fermerRules);
+  btnCloseRules.addEventListener('touchstart', fermerRules, { passive: false });
+}
+
+if (btnOkRules) {
+  btnOkRules.addEventListener('click', fermerRules);
+  btnOkRules.addEventListener('touchstart', fermerRules, { passive: false });
+}
 
 if (rulesOverlay) {
   rulesOverlay.addEventListener('click', (e) => {
-    if (e.target === rulesOverlay) fermerRules();
+    if (e.target === rulesOverlay) fermerRules(e);
   });
 }
 
