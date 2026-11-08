@@ -47,7 +47,6 @@ button {
   letter-spacing: 0.5px;
 }
 
-/* Cadres de synchronisation (clé et statut) */
 .sync-banner {
   height: 38px;
   margin: 0 auto 6px auto;
@@ -72,7 +71,6 @@ button {
   border-color: #555;
 }
 
-/* Carte de statistiques */
 .unified-stats-card {
   margin-bottom: 6px;
   padding: 8px 10px;

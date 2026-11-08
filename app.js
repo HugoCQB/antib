@@ -483,7 +483,6 @@ function handleClick() {
 function demarrerSession() {
   sauvegarderParametres();
   
-  // Temps masqué aléatoire entre 1 seconde et la limite du palier
   const maxSec = getTierActuel().minSec;
   targetSeconds = Math.floor(Math.random() * maxSec);
 
