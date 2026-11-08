@@ -31,7 +31,7 @@ const FIREBASE_DB_URL = "https://antibrainrotting-4f194-default-rtdb.europe-west
 let syncKey = localStorage.getItem("meditation_sync_key") || null;
 let currentKeyPassword = localStorage.getItem("meditation_sync_pwd") || "";
 let selectedTierLabel = "1m", running = false, finalValidationMode = false;
-let victoryDisplayMode = false;
+let victoryDisplayMode = false, defeatDisplayMode = false;
 let targetSeconds = 0, elapsedSeconds = 0, startTime = 0;
 let masterInterval = null, presenceTimer = null, flickerTimeout = null;
 let flickerIndex = 0;
@@ -53,7 +53,7 @@ const btnCloseRules = $('btnCloseRules');
 const btnOkRules = $('btnOkRules');
 
 function ouvrirRules(e) {
-  if (e) e.preventDefault(); // Évite les doubles clics sur mobile
+  if (e) e.preventDefault();
   if (rulesOverlay) rulesOverlay.classList.remove('hidden');
 }
 
@@ -62,7 +62,6 @@ function fermerRules(e) {
   if (rulesOverlay) rulesOverlay.classList.add('hidden');
 }
 
-// Support combiné Mobile (touchstart) + Desktop (click)
 if (btnToggleRules) {
   btnToggleRules.addEventListener('click', ouvrirRules);
   btnToggleRules.addEventListener('touchstart', ouvrirRules, { passive: false });
@@ -123,6 +122,7 @@ function reinitialiserDonneesLocales() {
   running = false;
   finalValidationMode = false;
   victoryDisplayMode = false;
+  defeatDisplayMode = false;
   setModeRecompense(false);
   rafraichirAffichageStats();
   actualiserBoutonRecommencer();
@@ -365,14 +365,14 @@ const getTierActuel = () => DURATION_TIERS.find(t => t.label === selectedTierLab
 const getTierCout = t => Math.round(t.minSec * t.buyMult);
 
 function actualiserBoutonRecommencer() {
-  if (!running && !pendingVictory && !victoryDisplayMode) {
+  if (!running && !pendingVictory && !victoryDisplayMode && !defeatDisplayMode) {
     arreterFlicker();
     setBouton(`COMMENCER ${formaterTemps(getTierActuel().minSec)}`);
   }
 }
 
 function selectionnerPalier(label) {
-  if (running || pendingVictory || victoryDisplayMode) return;
+  if (running || pendingVictory || victoryDisplayMode || defeatDisplayMode) return;
   selectedTierLabel = label;
   sauvegarderParametres();
   rafraichirAffichageStats();
@@ -405,7 +405,7 @@ function rafraichirAffichageStats() {
   }));
 
   const isDoneToday = data.tiers[tierObj.label]?.lastDate === today;
-  const idle = !running && !pendingVictory && !victoryDisplayMode;
+  const idle = !running && !pendingVictory && !victoryDisplayMode && !defeatDisplayMode;
 
   $('bonusInfo').style.display = (idle && isDoneToday) ? 'flex' : 'none';
   if (isDoneToday) $('bonusInfo').textContent = `Palier ${tierObj.label} déjà validé`;
@@ -428,7 +428,7 @@ function validerStreakJour(stats, tier, today) {
 }
 
 function acheterStreak() {
-  if (running || pendingVictory || victoryDisplayMode) return;
+  if (running || pendingVictory || victoryDisplayMode || defeatDisplayMode) return;
   const data = chargerDonneesStats();
   const tier = getTierActuel();
   const cout = getTierCout(tier);
@@ -501,6 +501,9 @@ function handleClick() {
   if (victoryDisplayMode) {
     victoryDisplayMode = false;
     actualiserBoutonRecommencer();
+  } else if (defeatDisplayMode) {
+    defeatDisplayMode = false;
+    actualiserBoutonRecommencer();
   } else if (finalValidationMode) {
     clearTimeout(presenceTimer);
     finalValidationMode = false;
@@ -535,6 +538,7 @@ function demarrerSession() {
   startTime = Date.now();
   finalValidationMode = false;
   victoryDisplayMode = false;
+  defeatDisplayMode = false;
   pendingVictory = null;
 
   running = true;
@@ -573,13 +577,14 @@ function activerCompteAReboursConfirmation(seconds, initialText, failReason) {
 function declarerEchec(raison = "NON VALIDÉ") {
   finalValidationMode = false;
   victoryDisplayMode = false;
+  defeatDisplayMode = true;
   pendingVictory = null;
   running = false;
   arreterFlicker();
   clearInterval(masterInterval);
   clearTimeout(presenceTimer);
   setModeRecompense(false);
-  setBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}\nRECOMMENCER`);
+  setBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}`);
 }
 
 $('btnSyncKey').addEventListener('click', changerOuCopierCle);
