@@ -1,31 +1,28 @@
 const $ = id => document.getElementById(id);
 
 const DURATION_TIERS = [
-  { id: "1m",   label: "≥ 1m",   minSec: 60,    rateFull: 0.15, rateSacrifice: 0.12, buyMult: 2.5 },
-  { id: "2m",   label: "≥ 2m",   minSec: 120,   rateFull: 0.17, rateSacrifice: 0.13, buyMult: 2.3 },
-  { id: "5m",   label: "≥ 5m",   minSec: 300,   rateFull: 0.20, rateSacrifice: 0.15, buyMult: 2.2 },
-  { id: "10m",  label: "≥ 10m",  minSec: 600,   rateFull: 0.25, rateSacrifice: 0.18, buyMult: 2.0 },
-  { id: "15m",  label: "≥ 15m",  minSec: 900,   rateFull: 0.30, rateSacrifice: 0.22, buyMult: 1.8 },
-  { id: "30m",  label: "≥ 30m",  minSec: 1800,  rateFull: 0.35, rateSacrifice: 0.18, buyMult: 1.5 },
-  { id: "45m",  label: "≥ 45m",  minSec: 2700,  rateFull: 0.40, rateSacrifice: 0.20, buyMult: 1.4 },
-  { id: "1h",   label: "≥ 1h",   minSec: 3600,  rateFull: 0.45, rateSacrifice: 0.22, buyMult: 1.3 },
-  { id: "1h30", label: "≥ 1h30", minSec: 5400,  rateFull: 0.50, rateSacrifice: 0.25, buyMult: 1.25 },
-  { id: "2h",   label: "≥ 2h",   minSec: 7200,  rateFull: 0.55, rateSacrifice: 0.24, buyMult: 1.2 },
-  { id: "2h30", label: "≥ 2h30", minSec: 9000,  rateFull: 0.58, rateSacrifice: 0.24, buyMult: 1.15 },
-  { id: "3h",   label: "≥ 3h",   minSec: 10800, rateFull: 0.60, rateSacrifice: 0.24, buyMult: 1.15 },
-  { id: "3h30", label: "≥ 3h30", minSec: 12600, rateFull: 0.62, rateSacrifice: 0.25, buyMult: 1.1 },
-  { id: "4h",   label: "≥ 4h",   minSec: 14400, rateFull: 0.64, rateSacrifice: 0.25, buyMult: 1.1 },
-  { id: "4h30", label: "≥ 4h30", minSec: 16200, rateFull: 0.65, rateSacrifice: 0.25, buyMult: 1.1 },
-  { id: "5h",   label: "≥ 5h",   minSec: 18000, rateFull: 0.66, rateSacrifice: 0.26, buyMult: 1.1 },
-  { id: "5h30", label: "≥ 5h30", minSec: 19800, rateFull: 0.67, rateSacrifice: 0.26, buyMult: 1.1 },
-  { id: "6h",   label: "≥ 6h",   minSec: 21600, rateFull: 0.68, rateSacrifice: 0.26, buyMult: 1.1 }
+  { id: "1m",   label: "1m",   minSec: 60,    rateFull: 0.15, rateSacrifice: 0.12, buyMult: 2.5 },
+  { id: "2m",   label: "2m",   minSec: 120,   rateFull: 0.17, rateSacrifice: 0.13, buyMult: 2.3 },
+  { id: "5m",   label: "5m",   minSec: 300,   rateFull: 0.20, rateSacrifice: 0.15, buyMult: 2.2 },
+  { id: "10m",  label: "10m",  minSec: 600,   rateFull: 0.25, rateSacrifice: 0.18, buyMult: 2.0 },
+  { id: "15m",  label: "15m",  minSec: 900,   rateFull: 0.30, rateSacrifice: 0.22, buyMult: 1.8 },
+  { id: "30m",  label: "30m",  minSec: 1800,  rateFull: 0.35, rateSacrifice: 0.18, buyMult: 1.5 },
+  { id: "45m",  label: "45m",  minSec: 2700,  rateFull: 0.40, rateSacrifice: 0.20, buyMult: 1.4 },
+  { id: "1h",   label: "1h",   minSec: 3600,  rateFull: 0.45, rateSacrifice: 0.22, buyMult: 1.3 },
+  { id: "1h30", label: "1h30", minSec: 5400,  rateFull: 0.50, rateSacrifice: 0.25, buyMult: 1.25 },
+  { id: "2h",   label: "2h",   minSec: 7200,  rateFull: 0.55, rateSacrifice: 0.24, buyMult: 1.2 },
+  { id: "2h30", label: "2h30", minSec: 9000,  rateFull: 0.58, rateSacrifice: 0.24, buyMult: 1.15 },
+  { id: "3h",   label: "3h",   minSec: 10800, rateFull: 0.60, rateSacrifice: 0.24, buyMult: 1.15 },
+  { id: "3h30", label: "3h30", minSec: 12600, rateFull: 0.62, rateSacrifice: 0.25, buyMult: 1.1 },
+  { id: "4h",   label: "4h",   minSec: 14400, rateFull: 0.64, rateSacrifice: 0.25, buyMult: 1.1 },
+  { id: "4h30", label: "4h30", minSec: 16200, rateFull: 0.65, rateSacrifice: 0.25, buyMult: 1.1 },
+  { id: "5h",   label: "5h",   minSec: 18000, rateFull: 0.66, rateSacrifice: 0.26, buyMult: 1.1 },
+  { id: "5h30", label: "5h30", minSec: 19800, rateFull: 0.67, rateSacrifice: 0.26, buyMult: 1.1 },
+  { id: "6h",   label: "6h",   minSec: 21600, rateFull: 0.68, rateSacrifice: 0.26, buyMult: 1.1 }
 ];
-
-const SURPRISE_CHANCE_PER_SEC = 1 / 5;
 
 const PATTERNS = {
   running: ["ATTENDRE.", "ATTENDRE..", "ATTENDRE..."],
-  mid: ["VALIDER..", "VALIDER...", "VALIDER...."],
   final: ["CONFIRMER", "CONFIRMER.", "CONFIRMER.."]
 };
 
@@ -34,8 +31,8 @@ const FIREBASE_DB_URL = "https://antibrainrotting-4f194-default-rtdb.europe-west
 
 let syncKey = localStorage.getItem("meditation_sync_key") || null;
 let currentKeyPassword = localStorage.getItem("meditation_sync_pwd") || "";
-let selectedTierId = "1m", running = false, presenceMode = null;
-let targetSeconds = 0, elapsedSeconds = 0, pauseOffsetMs = 0, pauseStartMs = 0, startTime = 0;
+let selectedTierId = "1m", running = false, finalValidationMode = false;
+let targetSeconds = 0, elapsedSeconds = 0, startTime = 0;
 let masterInterval = null, presenceTimer = null, flickerTimeout = null;
 let flickerIndex = 0;
 let pendingVictory = null;
@@ -81,6 +78,24 @@ function genererNouvelleCle() {
   return "ABR-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+function reinitialiserDonneesLocales() {
+  // Réinitialise le palier sélectionné à 1m
+  selectedTierId = "1m";
+  sauvegarderParametres();
+
+  // Remet à zéro les statistiques locales (y compris le solde de temps)
+  const emptyStats = parserEtValiderStats({ bankSeconds: 0 });
+  enregistrerDonneesStats(emptyStats, false);
+  
+  // Réinitialise l'état d'affichage (bouton commencer & paliers)
+  pendingVictory = null;
+  running = false;
+  finalValidationMode = false;
+  setModeRecompense(false);
+  rafraichirAffichageStats();
+  actualiserBoutonRecommencer();
+}
+
 async function changerOuCopierCle() {
   if (running) return;
 
@@ -114,6 +129,9 @@ async function changerOuCopierCle() {
     return;
   }
 
+  // Changer de clé = réinitialiser l'interface et la progression locale
+  reinitialiserDonneesLocales();
+
   // Option 1 ou saisie directe
   let nouvelleCle = (saisie === "1") ? (prompt("Entrez la clé :") || "").trim() : saisie;
 
@@ -133,33 +151,6 @@ async function changerOuCopierCle() {
   localStorage.setItem("meditation_sync_key", syncKey);
   updateSyncKeyUI();
   await pullFromCloud();
-}
-
-function fusionnerDonnees(local, distant) {
-  const fusion = { ...local };
-  const today = dateJour();
-
-  fusion.bankSeconds = Math.max(local.bankSeconds || 0, distant.bankSeconds || 0);
-  fusion.dayStreakRecord = Math.max(local.dayStreakRecord || 0, distant.dayStreakRecord || 0);
-
-  if (distant.lastActiveDate === today) {
-    fusion.lastActiveDate = today;
-    fusion.dayStreak = Math.max(local.dayStreak || 0, distant.dayStreak || 0);
-  }
-
-  fusion.tiers = {};
-  DURATION_TIERS.forEach(t => {
-    const locTier = local.tiers?.[t.id] || { streak: 0, record: 0, lastDate: null };
-    const distTier = distant.tiers?.[t.id] || { streak: 0, record: 0, lastDate: null };
-
-    const lastDate = (locTier.lastDate === today || distTier.lastDate === today) ? today : (locTier.lastDate || distTier.lastDate);
-    const streak = Math.max(locTier.streak || 0, distTier.streak || 0);
-    const record = Math.max(locTier.record || 0, distTier.record || 0);
-
-    fusion.tiers[t.id] = { streak, record, lastDate };
-  });
-
-  return fusion;
 }
 
 async function pullFromCloud() {
@@ -185,6 +176,8 @@ async function pullFromCloud() {
     const payload = await res.json();
 
     if (!payload) {
+      // Clé distante vide = progression vierge
+      reinitialiserDonneesLocales();
       await pushToCloud();
       return;
     }
@@ -216,11 +209,9 @@ async function pullFromCloud() {
     }
 
     const distantData = parserEtValiderStats(payload);
-    const localData = chargerDonneesStats();
-    const merged = fusionnerDonnees(localData, distantData);
-
-    enregistrerDonneesStats(merged, false);
+    enregistrerDonneesStats(distantData, false);
     rafraichirAffichageStats();
+    actualiserBoutonRecommencer();
     updateSyncStatus("À JOUR", true);
   } catch (e) {
     console.error("Erreur lecture Firebase:", e);
@@ -283,8 +274,7 @@ function demarrerFlicker() {
     flickerIndex++;
     let currentList = null;
 
-    if (presenceMode === 'mid') currentList = PATTERNS.mid;
-    else if (presenceMode === 'final') currentList = PATTERNS.final;
+    if (finalValidationMode) currentList = PATTERNS.final;
     else if (running) currentList = PATTERNS.running;
 
     if (currentList) {
@@ -353,7 +343,7 @@ const getTierCout = t => Math.round(t.minSec * t.buyMult);
 function actualiserBoutonRecommencer() {
   if (!running && !pendingVictory) {
     arreterFlicker();
-    setBouton(`COMMENCER\n${formaterTemps(getTierActuel().minSec)}`);
+    setBouton(`COMMENCER\nMax : ${formaterTemps(getTierActuel().minSec)}`);
   }
 }
 
@@ -482,14 +472,9 @@ function setBouton(label = "COMMENCER", className = "") {
 }
 
 function handleClick() {
-  if (presenceMode === 'mid') {
+  if (finalValidationMode) {
     clearTimeout(presenceTimer);
-    presenceMode = null;
-    pauseOffsetMs += (Date.now() - pauseStartMs);
-    setBouton(PATTERNS.running[0], "stop");
-  } else if (presenceMode === 'final') {
-    clearTimeout(presenceTimer);
-    presenceMode = null;
+    finalValidationMode = false;
     arreterFlicker();
 
     const stats = chargerDonneesStats();
@@ -513,10 +498,15 @@ function handleClick() {
 
 function demarrerSession() {
   sauvegarderParametres();
-  targetSeconds = getTierActuel().minSec;
-  elapsedSeconds = pauseOffsetMs = 0;
+  
+  // Temps masqué aléatoire entre 1 seconde et la limite du palier
+  const maxSec = getTierActuel().minSec;
+  targetSeconds = Math.floor(Math.random() * maxSec) + 1;
+
+  elapsedSeconds = 0;
   startTime = Date.now();
-  presenceMode = pendingVictory = null;
+  finalValidationMode = false;
+  pendingVictory = null;
 
   running = true;
   setModeRecompense(false);
@@ -528,40 +518,32 @@ function demarrerSession() {
 }
 
 function moteurTemps() {
-  if (!running || presenceMode !== null) return;
+  if (!running || finalValidationMode) return;
 
-  const currentSec = Math.floor((Date.now() - startTime - pauseOffsetMs) / 1000);
+  const currentSec = Math.floor((Date.now() - startTime) / 1000);
   if (currentSec <= elapsedSeconds) return;
 
-  while (elapsedSeconds < currentSec && running && presenceMode === null) {
-    elapsedSeconds++;
+  elapsedSeconds = currentSec;
 
-    if (elapsedSeconds >= targetSeconds) {
-      clearInterval(masterInterval);
-      running = false;
-      activerCompteARebours('final', 5, PATTERNS.final[0], "NON VALIDÉ");
-      return;
-    }
-
-    if (Math.random() < SURPRISE_CHANCE_PER_SEC) {
-      pauseStartMs = Date.now();
-      activerCompteARebours('mid', 5, PATTERNS.mid[0], "CONTRÔLE MANQUÉ");
-      return;
-    }
+  if (elapsedSeconds >= targetSeconds) {
+    clearInterval(masterInterval);
+    running = false;
+    activerCompteAReboursConfirmation(5, PATTERNS.final[0], "NON VALIDÉ");
   }
 }
 
-function activerCompteARebours(mode, seconds, initialText, failReason) {
+function activerCompteAReboursConfirmation(seconds, initialText, failReason) {
   clearTimeout(presenceTimer);
-  presenceMode = mode;
+  finalValidationMode = true;
   setBouton(initialText, "presence");
   presenceTimer = setTimeout(() => {
-    if (presenceMode === mode) declarerEchec(failReason);
+    if (finalValidationMode) declarerEchec(failReason);
   }, seconds * 1000);
 }
 
 function declarerEchec(raison = "NON VALIDÉ") {
-  presenceMode = pendingVictory = null;
+  finalValidationMode = false;
+  pendingVictory = null;
   running = false;
   arreterFlicker();
   clearInterval(masterInterval);
