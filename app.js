@@ -110,13 +110,9 @@ if (rulesOverlay) {
   });
 }
 
-const dateJour = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+// FIX 1: Utilisation de la date au format ISO UTC pour uniformiser tous les appareils
+const dateJour = () => new Date().toISOString().split('T')[0];
+
 const ecartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
 const storageGet = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) || def; } catch { return def; } };
 const storageSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error(e); } };
@@ -149,12 +145,12 @@ function genererNouvelleCle() {
   return "ABR-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-function reinitialiserDonneesLocales() {
+async function reinitialiserDonneesLocales() {
   selectedTierLabel = "1m";
   sauvegarderParametres();
 
   const emptyStats = parserEtValiderStats({ bankSeconds: 0 });
-  enregistrerDonneesStats(emptyStats, false);
+  await enregistrerDonneesStats(emptyStats, false);
   
   annulerTimeoutVisibilite();
   pendingVictory = null;
@@ -199,7 +195,7 @@ async function changerOuCopierCle() {
     return;
   }
 
-  reinitialiserDonneesLocales();
+  await reinitialiserDonneesLocales();
 
   let nouvelleCle = (saisie === "1") ? (prompt("Entrez la clé :") || "").trim() : saisie;
 
@@ -219,6 +215,36 @@ async function changerOuCopierCle() {
   localStorage.setItem("meditation_sync_key", syncKey);
   updateSyncKeyUI();
   await pullFromCloud();
+}
+
+// FIX 2: Algorithme de fusion intelligente (Merge) entre les données locales et les données du cloud
+function fusionnerStats(locale, distante) {
+  const latestDate = (d1, d2) => {
+    if (!d1) return d2;
+    if (!d2) return d1;
+    return d1 > d2 ? d1 : d2;
+  };
+
+  const res = {
+    dayStreak: Math.max(locale.dayStreak || 0, distante.dayStreak || 0),
+    dayStreakRecord: Math.max(locale.dayStreakRecord || 0, distante.dayStreakRecord || 0),
+    bankSeconds: Math.max(locale.bankSeconds || 0, distante.bankSeconds || 0),
+    lastActiveDate: latestDate(locale.lastActiveDate, distante.lastActiveDate),
+    tiers: {}
+  };
+
+  DURATION_TIERS.forEach(t => {
+    const locT = (locale.tiers && locale.tiers[t.label]) || {};
+    const disT = (distante.tiers && distante.tiers[t.label]) || {};
+
+    res.tiers[t.label] = {
+      streak: Math.max(locT.streak || 0, disT.streak || 0),
+      record: Math.max(locT.record || 0, disT.record || 0),
+      lastDate: latestDate(locT.lastDate, disT.lastDate)
+    };
+  });
+
+  return parserEtValiderStats(res);
 }
 
 async function pullFromCloud() {
@@ -244,7 +270,7 @@ async function pullFromCloud() {
     const payload = await res.json();
 
     if (!payload) {
-      reinitialiserDonneesLocales();
+      await reinitialiserDonneesLocales();
       await pushToCloud();
       return;
     }
@@ -274,8 +300,11 @@ async function pullFromCloud() {
       updateSyncKeyUI();
     }
 
+    const localData = chargerDonneesStats();
     const distantData = parserEtValiderStats(payload);
-    enregistrerDonneesStats(distantData, false);
+    const mergedData = fusionnerStats(localData, distantData);
+
+    await enregistrerDonneesStats(mergedData, true);
     rafraichirAffichageStats();
     actualiserBoutonRecommencer();
     updateSyncStatus("À JOUR", true);
@@ -386,9 +415,12 @@ function parserEtValiderStats(data = {}) {
 
 const chargerDonneesStats = () => parserEtValiderStats(storageGet('meditation_presence_stats', {}));
 
-function enregistrerDonneesStats(data, syncDistante = true) {
+// FIX 3: Rendre l'enregistrement asynchrone pour attendre la fin de la synchronisation cloud
+async function enregistrerDonneesStats(data, syncDistante = true) {
   storageSet('meditation_presence_stats', data);
-  if (syncDistante) pushToCloud();
+  if (syncDistante) {
+    await pushToCloud();
+  }
 }
 
 function sauvegarderParametres() {
@@ -470,7 +502,7 @@ function validerStreakJour(stats, tier, today) {
   updateStreakData(tData, 'lastDate', 'streak', 'record', today);
 }
 
-function acheterStreak() {
+async function acheterStreak() {
   if (running || pendingVictory || victoryDisplayMode || defeatDisplayMode) return;
   const data = chargerDonneesStats();
   const tier = getTierActuel();
@@ -480,7 +512,7 @@ function acheterStreak() {
 
   data.bankSeconds -= cout;
   validerStreakJour(data, tier, dateJour());
-  enregistrerDonneesStats(data);
+  await enregistrerDonneesStats(data, true);
   rafraichirAffichageStats();
   alert(`Streak ${tier.label} acheté avec succès !`);
 }
@@ -490,7 +522,7 @@ function setModeRecompense(actif) {
   $('actionBtn').style.display = actif ? 'none' : 'flex';
 }
 
-function traiterRecompenseSession(choix) {
+async function traiterRecompenseSession(choix) {
   if (!pendingVictory) return;
   const { dureeReelle, targetTier } = pendingVictory;
   const stats = chargerDonneesStats();
@@ -506,7 +538,7 @@ function traiterRecompenseSession(choix) {
     texteResultat = `+${formaterTemps(gain)} ${isSacrifice ? '(SACRIFICE)' : 'SOLDÉ'}`;
   }
 
-  enregistrerDonneesStats(stats);
+  await enregistrerDonneesStats(stats, true);
   rafraichirAffichageStats();
 
   const tempsTenu = formaterTemps(dureeReelle);
