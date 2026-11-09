@@ -37,7 +37,13 @@ let masterInterval = null, presenceTimer = null, flickerTimeout = null;
 let flickerIndex = 0;
 let pendingVictory = null;
 
-const dateJour = () => new Date().toISOString().slice(0, 10);
+const dateJour = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 const ecartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
 const storageGet = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) || def; } catch { return def; } };
 const storageSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error(e); } };
@@ -566,7 +572,7 @@ function moteurTemps() {
   if (elapsedSeconds >= targetSeconds) {
     clearInterval(masterInterval);
     running = false;
-    activerCompteAReboursConfirmation(3, PATTERNS.final[0], "NON VALIDÉ");
+    activerCompteAReboursConfirmation(5, PATTERNS.final[0], "NON VALIDÉ");
   }
 }
 
