@@ -32,25 +32,46 @@ let syncKey = localStorage.getItem("meditation_sync_key") || null;
 let currentKeyPassword = localStorage.getItem("meditation_sync_pwd") || "";
 let selectedTierLabel = "1m", running = false, finalValidationMode = false;
 let victoryDisplayMode = false, defeatDisplayMode = false;
-let targetSeconds = 0, elapsedSeconds = 0, startTime = 0;
+let targetSeconds = 0, elapsedSeconds = 0, startTime = 0, lastCheckTime = 0;
 let masterInterval = null, presenceTimer = null, flickerTimeout = null;
 let flickerIndex = 0;
 let pendingVictory = null;
 
-const dateJour = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-const ecartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
-const storageGet = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) || def; } catch { return def; } };
-const storageSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error(e); } };
+let hiddenTimeout = null;
+const GRACE_PERIOD_MS = 10000;
 
-const stopIfRunning = () => { if (running) declarerEchec("APPLICATION QUITTÉE"); };
-document.addEventListener("visibilitychange", () => { if (document.hidden) stopIfRunning(); });
-window.addEventListener("pagehide", stopIfRunning);
+function annulerTimeoutVisibilite() {
+  if (hiddenTimeout) {
+    clearTimeout(hiddenTimeout);
+    hiddenTimeout = null;
+  }
+}
+
+function gererChangementVisibilite() {
+  if (!running && !finalValidationMode) {
+    annulerTimeoutVisibilite();
+    return;
+  }
+
+  const estMasque = document.hidden || !document.hasFocus();
+
+  if (estMasque) {
+    if (!hiddenTimeout) {
+      hiddenTimeout = setTimeout(() => {
+        declarerEchec("FENÊTRE CACHÉE (>10s)");
+      }, GRACE_PERIOD_MS);
+    }
+  } else {
+    annulerTimeoutVisibilite();
+  }
+}
+
+document.addEventListener("visibilitychange", gererChangementVisibilite);
+window.addEventListener("blur", gererChangementVisibilite);
+window.addEventListener("focus", gererChangementVisibilite);
+window.addEventListener("pagehide", () => {
+  if (running || finalValidationMode) declarerEchec("APPLICATION QUITTÉE");
+});
 
 // GESTION DU POPUP DES RÈGLES DU JEU
 const btnToggleRules = $('btnToggleRules');
@@ -89,6 +110,17 @@ if (rulesOverlay) {
   });
 }
 
+const dateJour = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+const ecartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
+const storageGet = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) || def; } catch { return def; } };
+const storageSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error(e); } };
+
 async function hashPassword(str) {
   if (!str) return null;
   const buffer = new TextEncoder().encode(str);
@@ -124,6 +156,7 @@ function reinitialiserDonneesLocales() {
   const emptyStats = parserEtValiderStats({ bankSeconds: 0 });
   enregistrerDonneesStats(emptyStats, false);
   
+  annulerTimeoutVisibilite();
   pendingVictory = null;
   running = false;
   finalValidationMode = false;
@@ -380,7 +413,6 @@ function actualiserBoutonRecommencer() {
 function selectionnerPalier(label) {
   if (running || pendingVictory) return;
   
-  // Si on était en affichage de victoire/défaite, cliquer sur un palier réinitialise l'affichage vers COMMENCER
   victoryDisplayMode = false;
   defeatDisplayMode = false;
   
@@ -547,10 +579,13 @@ function demarrerSession() {
 
   elapsedSeconds = 0;
   startTime = Date.now();
+  lastCheckTime = Date.now();
   finalValidationMode = false;
   victoryDisplayMode = false;
   defeatDisplayMode = false;
   pendingVictory = null;
+
+  annulerTimeoutVisibilite();
 
   running = true;
   setModeRecompense(false);
@@ -564,7 +599,15 @@ function demarrerSession() {
 function moteurTemps() {
   if (!running || finalValidationMode) return;
 
-  const currentSec = Math.floor((Date.now() - startTime) / 1000);
+  const now = Date.now();
+
+  if (now - lastCheckTime > 10000) {
+    declarerEchec("MISE EN VEILLE DÉTECTÉE (>10s)");
+    return;
+  }
+  lastCheckTime = now;
+
+  const currentSec = Math.floor((now - startTime) / 1000);
   if (currentSec <= elapsedSeconds) return;
 
   elapsedSeconds = currentSec;
@@ -591,6 +634,8 @@ function declarerEchec(raison = "NON VALIDÉ") {
   defeatDisplayMode = true;
   pendingVictory = null;
   running = false;
+
+  annulerTimeoutVisibilite();
   arreterFlicker();
   clearInterval(masterInterval);
   clearTimeout(presenceTimer);

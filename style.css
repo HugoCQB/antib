@@ -45,7 +45,6 @@ button,
   cursor: pointer;
 }
 
-/* POPUP MODALE RÈGLES */
 .modal-overlay {
   position: fixed;
   top: 0;
