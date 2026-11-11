@@ -5,8 +5,17 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-body {
+html, body {
+  width: 100vw;
+  height: 100vh;
   margin: 0;
+  padding: 0;
+  overflow: hidden; /* Désactive le défilement et le scroll de dézoom */
+  position: fixed;  /* Verrouille le layout global sur écran */
+  touch-action: none; /* Bloque le pinch-to-zoom tactile */
+}
+
+body {
   background: #000;
   color: #fff;
   font-family: "SF Mono", Monaco, Consolas, "Liberation Mono", monospace;
@@ -14,7 +23,6 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
   text-align: center;
   padding: 10px 14px;
 }
@@ -43,6 +51,7 @@ button,
 
 #btnToggleRules {
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .modal-overlay {
@@ -65,6 +74,7 @@ button,
   padding: 12px;
   text-align: left;
   box-shadow: 0 0 16px rgba(255, 255, 255, 0.2);
+  touch-action: manipulation;
 }
 
 .modal-header {
@@ -126,6 +136,7 @@ button {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  touch-action: manipulation;
 }
 
 .sync-banner {
@@ -140,6 +151,7 @@ button {
   align-items: center;
   justify-content: center;
   text-align: center;
+  touch-action: manipulation;
 }
 
 #btnSyncKey {
@@ -155,6 +167,7 @@ button {
 .unified-stats-card {
   margin-bottom: 6px;
   padding: 8px 10px;
+  touch-action: manipulation;
 }
 
 .stats-header {
@@ -209,6 +222,7 @@ button {
   color: #666;
   overflow: hidden;
   font-family: inherit;
+  touch-action: manipulation;
 }
 
 .tier-box span {
@@ -309,9 +323,4 @@ button {
 
 .hidden {
   display: none !important;
-}
-
-#btnToggleRules {
-  cursor: pointer;
-  touch-action: manipulation;
 }

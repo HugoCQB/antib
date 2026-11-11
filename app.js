@@ -637,7 +637,7 @@ function moteurTemps() {
   if (elapsedSeconds >= targetSeconds) {
     clearInterval(masterInterval);
     running = false;
-    activerCompteAReboursConfirmation(5, PATTERNS.final[0], "NON VALIDÉ");
+    activerCompteAReboursConfirmation(2, PATTERNS.final[0], "NON VALIDÉ");
   }
 }
 
@@ -664,6 +664,35 @@ function declarerEchec(raison = "NON VALIDÉ") {
   setModeRecompense(false);
   setBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}`);
 }
+
+// PROTECTION ANTI-DEZOOM ORDINATEUR (TRACKPAD, CLAVIER & SOURIS)
+document.addEventListener('wheel', function (e) {
+  if (e.ctrlKey) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+document.addEventListener('keydown', function (e) {
+  if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+    e.preventDefault();
+  }
+});
+
+// PROTECTION ANTI-DEZOOM MOBILE (PINCH & DOUBLE-TAP)
+document.addEventListener('touchmove', function (e) {
+  if (e.touches.length > 1) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function (e) {
+  const now = (new Date()).getTime();
+  if (now - lastTouchEnd <= 300) {
+    e.preventDefault();
+  }
+  lastTouchEnd = now;
+}, false);
 
 $('btnSyncKey').addEventListener('click', changerOuCopierCle);
 $('actionBtn').addEventListener('click', handleClick);
