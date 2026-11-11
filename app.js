@@ -110,7 +110,6 @@ if (rulesOverlay) {
   });
 }
 
-// FIX 1: Utilisation de la date au format ISO UTC pour uniformiser tous les appareils
 const dateJour = () => new Date().toISOString().split('T')[0];
 
 const ecartJours = (d1, d2) => (!d1 || !d2) ? 999 : Math.round((new Date(d2) - new Date(d1)) / 864e5);
@@ -217,7 +216,6 @@ async function changerOuCopierCle() {
   await pullFromCloud();
 }
 
-// FIX 2: Algorithme de fusion intelligente (Merge) entre les données locales et les données du cloud
 function fusionnerStats(locale, distante) {
   const latestDate = (d1, d2) => {
     if (!d1) return d2;
@@ -226,8 +224,6 @@ function fusionnerStats(locale, distante) {
   };
 
   const res = {
-    dayStreak: Math.max(locale.dayStreak || 0, distante.dayStreak || 0),
-    dayStreakRecord: Math.max(locale.dayStreakRecord || 0, distante.dayStreakRecord || 0),
     bankSeconds: Math.max(locale.bankSeconds || 0, distante.bankSeconds || 0),
     lastActiveDate: latestDate(locale.lastActiveDate, distante.lastActiveDate),
     tiers: {}
@@ -403,11 +399,8 @@ function parserEtValiderStats(data = {}) {
     tiers[t.label] = { streak, record: Math.max(streak, raw.record || 0), lastDate: raw.lastDate || null };
   });
 
-  const dayStreak = ecartJours(data.lastActiveDate, today) > 1 ? 0 : (data.dayStreak || 0);
   return {
     lastActiveDate: data.lastActiveDate || null,
-    dayStreak,
-    dayStreakRecord: Math.max(dayStreak, data.dayStreakRecord || 0),
     bankSeconds: data.bankSeconds || 0,
     tiers
   };
@@ -415,7 +408,6 @@ function parserEtValiderStats(data = {}) {
 
 const chargerDonneesStats = () => parserEtValiderStats(storageGet('meditation_presence_stats', {}));
 
-// FIX 3: Rendre l'enregistrement asynchrone pour attendre la fin de la synchronisation cloud
 async function enregistrerDonneesStats(data, syncDistante = true) {
   storageSet('meditation_presence_stats', data);
   if (syncDistante) {
@@ -459,8 +451,6 @@ function rafraichirAffichageStats() {
   const today = dateJour();
   const tierObj = getTierActuel();
 
-  $('statDayStreak').textContent = `${data.dayStreak}j`;
-  $('statDayStreakRecord').textContent = `Record : ${data.dayStreakRecord}j`;
   $('statBank').textContent = formaterTemps(data.bankSeconds);
 
   $('tiersContainer').replaceChildren(...DURATION_TIERS.map(t => {
@@ -497,7 +487,7 @@ function rafraichirAffichageStats() {
 }
 
 function validerStreakJour(stats, tier, today) {
-  updateStreakData(stats, 'lastActiveDate', 'dayStreak', 'dayStreakRecord', today);
+  stats.lastActiveDate = today;
   const tData = stats.tiers[tier.label] = stats.tiers[tier.label] || { streak: 0, record: 0, lastDate: null };
   updateStreakData(tData, 'lastDate', 'streak', 'record', today);
 }
