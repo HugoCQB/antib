@@ -637,7 +637,7 @@ function moteurTemps() {
   if (elapsedSeconds >= targetSeconds) {
     clearInterval(masterInterval);
     running = false;
-    activerCompteAReboursConfirmation(3, PATTERNS.final[0], "NON VALIDÉ");
+    activerCompteAReboursConfirmation(2, PATTERNS.final[0], "NON VALIDÉ");
   }
 }
 
@@ -665,7 +665,7 @@ function declarerEchec(raison = "NON VALIDÉ") {
   setBouton(`PERDU (${formaterTemps(elapsedSeconds)})\n${raison}`);
 }
 
-// PROTECTION ANTI-DEZOOM ORDINATEUR (TRACKPAD, CLAVIER & SOURIS)
+// PROTECTION ANTI-ZOOM ORDINATEUR (TRACKPAD & CLAVIER)
 document.addEventListener('wheel', function (e) {
   if (e.ctrlKey) {
     e.preventDefault();
@@ -678,10 +678,10 @@ document.addEventListener('keydown', function (e) {
   }
 });
 
-// PROTECTION ANTI-DEZOOM MOBILE (PINCH & DOUBLE-TAP)
+// PROTECTION ANTI-ZOOM MOBILE (UNIQUEMENT BLOQUER LE PINCH A 2 DOIGTS ET DOUBLE TAP)
 document.addEventListener('touchmove', function (e) {
   if (e.touches.length > 1) {
-    e.preventDefault();
+    e.preventDefault(); // Bloque le zoom 2 doigts mais laisse passer le scroll 1 doigt
   }
 }, { passive: false });
 
@@ -689,7 +689,7 @@ let lastTouchEnd = 0;
 document.addEventListener('touchend', function (e) {
   const now = (new Date()).getTime();
   if (now - lastTouchEnd <= 300) {
-    e.preventDefault();
+    e.preventDefault(); // Bloque le double-tap-to-zoom
   }
   lastTouchEnd = now;
 }, false);

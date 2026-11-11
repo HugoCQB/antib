@@ -6,13 +6,11 @@
 }
 
 html, body {
-  width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Désactive le défilement et le scroll de dézoom */
-  position: fixed;  /* Verrouille le layout global sur écran */
-  touch-action: none; /* Bloque le pinch-to-zoom tactile */
+  /* Autorise uniquement le scroll vertical (pan-y) et bloque le pinch-to-zoom */
+  touch-action: pan-y; 
 }
 
 body {
