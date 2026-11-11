@@ -637,7 +637,7 @@ function moteurTemps() {
   if (elapsedSeconds >= targetSeconds) {
     clearInterval(masterInterval);
     running = false;
-    activerCompteAReboursConfirmation(2, PATTERNS.final[0], "NON VALIDÉ");
+    activerCompteAReboursConfirmation(3, PATTERNS.final[0], "NON VALIDÉ");
   }
 }
 
