@@ -435,7 +435,7 @@ function actualiserBoutonRecommencer() {
 }
 
 function selectionnerPalier(label) {
-  if (running || pendingVictory) return;
+  if (running || pendingVictory || finalValidationMode) return;
   
   victoryDisplayMode = false;
   defeatDisplayMode = false;
